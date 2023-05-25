@@ -27,7 +27,7 @@ class LabelParser:
     path2mapping: Path
     annotations_type: str
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
 
         with open(self.path2mapping, "r") as f:
             self.mapper = json.load(f)
@@ -205,7 +205,7 @@ class ImageSegmentationDataset(Dataset):
             self.images_list += single_folder.images_path_list
             self.labels_list += single_folder.label_path_list
 
-        self.label_parser = LabelParser(root_dirs[0] / "mapping.json", annotation_type)
+        self.label_parser: LabelParser = LabelParser(root_dirs[0] / "mapping.json", annotation_type)
         self.label_channels = self.label_parser.mask_num
 
     def __len__(self):
