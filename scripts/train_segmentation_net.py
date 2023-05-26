@@ -58,19 +58,6 @@ def train_with_video_dataset():
 
 
 def train_with_image_dataset():
-    # # Config parameters
-    # data_dir = Path("/home/juan1995/research_juan/accelnet_grant/data")
-    # train_dir_list = [data_dir / "rec01", data_dir / "rec03", data_dir / "rec05"]
-    # valid_dir_list = [data_dir / "rec02", data_dir / "rec04"]
-    # annotations_type = "5colors"
-    # pretrained_weights_path = Path("./assets/weights/pretrained-weights")
-    # training_output_path = Path("./assets/weights/myweights_image")
-    # mapping_file = data_dir / "rec01" / annotations_type / "mapping.json"
-
-    # device = "cpu"
-    # epochs = 2
-    # learning_rate = 1e-2
-
     # Config parameters
     config = ConfigParser()
     config.read_config("./training_configs/juanubuntu/ambf_train_config.yaml")
