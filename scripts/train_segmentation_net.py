@@ -6,6 +6,7 @@ import monai
 from monai.data import ThreadDataLoader
 from monai.networks.nets import FlexibleUNet
 
+from surg_seg.Datasets.SegmentationLabelParser import AmbfMultiClassesInfoReader
 from surg_seg.Datasets.ImageDataset import ImageSegmentationDataset
 from surg_seg.Datasets.VideoDatasets import CombinedVidDataset
 from surg_seg.Trainers.Trainer import ModelTrainer
@@ -61,7 +62,10 @@ def train_with_image_dataset():
     train_dirs = [root / "rec01", root / "rec03", root / "rec05"]
     val_dirs = [root / "rec02", root / "rec04"]
 
-    ds = ImageSegmentationDataset(train_dirs, "5colors")
+    mapping_file = root / "rec01" / "5colors" / "mapping.json"
+    label_info_reader = AmbfMultiClassesInfoReader(mapping_file)
+
+    ds = ImageSegmentationDataset(train_dirs, "5colors", label_info_reader)
     dl = ThreadDataLoader(ds, batch_size=4, num_workers=0, shuffle=True)
 
     val_ds = ImageSegmentationDataset(val_dirs, "5colors")

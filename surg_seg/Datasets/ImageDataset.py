@@ -11,102 +11,7 @@ import natsort
 
 from monai.visualize.utils import blend_images
 from dataclasses import InitVar, dataclass, field
-
-
-@dataclass
-class LabelParserElement:
-    """Helper class that relates current rgb color, name and id."""
-
-    id: int
-    name: str
-    rgb: List[int]
-
-
-@dataclass
-class LabelParser:
-    path2mapping: Path
-    annotations_type: str
-
-    def __post_init__(self) -> None:
-
-        with open(self.path2mapping, "r") as f:
-            self.mapper = json.load(f)
-
-        if self.annotations_type in self.mapper:
-            self.mask = self.mapper[self.annotations_type]
-        else:
-            raise RuntimeWarning(
-                f"annotations type {self.annotations_type} not found in {self.path2mapping}"
-            )
-
-        self.mask_num = len(self.mask)
-        self.conversion_list = [
-            LabelParserElement(idx, key, value)
-            for idx, (key, value) in enumerate(self.mask.items())
-        ]
-
-    def convert_rgb_to_single_channel(self, label_im, color_first=True):
-        """Convert an annotations RGB image into a single channel image. The
-        label image should have a shape `HWC` where `c==3`. This function
-        converts labels that are compatible with Monai.blend function.
-
-        Func to convert indexes taken from
-        https://stackoverflow.com/questions/12138339/finding-the-x-y-indexes-of-specific-r-g-b-color-values-from-images-stored-in
-
-        """
-
-        assert label_im.shape[2] == 3, "label in wrong format"
-
-        converted_img = np.zeros((label_im.shape[0], label_im.shape[1]))
-
-        e: LabelParserElement
-        for e in self.conversion_list:
-            rgb = e.rgb
-            new_color = e.id
-            indices = np.where(np.all(label_im == rgb, axis=-1))
-            converted_img[indices[0], indices[1]] = new_color
-
-        converted_img = (
-            np.expand_dims(converted_img, 0) if color_first else np.expand_dims(converted_img, -1)
-        )
-        return converted_img
-
-    def convert_rgb_to_onehot(self, mask: np.ndarray):
-        """Convert rgb label to one-hot encoding"""
-
-        assert len(mask.shape) == 3, "label not a rgb image"
-        assert mask.shape[2] == 3, "label not a rgb image"
-
-        h, w, c = mask.shape
-
-        ## Convert grey-scale label to one-hot encoding
-        new_mask = np.zeros((self.mask_num, h, w))
-
-        e: LabelParserElement
-        for e in self.conversion_list:
-            rgb = e.rgb
-            new_idx = e.id
-            new_mask[new_idx, :, :] = np.all(mask == rgb, axis=-1)
-
-        return new_mask
-
-    def convert_onehot_to_single_ch(self, onehot_mask: torch.tensor):
-        m_temp = torch.argmax(onehot_mask, axis=0)
-        m_temp = torch.unsqueeze(m_temp, 0)
-        return m_temp
-
-    # def convert_onehot_to_rgb(self, onehot_mask):
-
-    # new_mask = np.zeros((1, onehot_mask.shape[1], onehot_mask.shape[2]))
-    #     e: LabelParserElement
-    #     for e in self.conversion_list:
-
-    #         temp = ((m_temp == e.id) * mask_value[idx]).data.numpy()
-    #         new_mask += temp
-    #     new_mask = np.expand_dims(new_mask, axis=-1)
-    #     new_mask = np.concatenate((new_mask, new_mask, new_mask), axis=-1)
-    #     new_mask = new_mask.astype(np.int32)
-    #     return new_mask
+from surg_seg.Datasets.SegmentationLabelParser import LabelInfoReader, LabelParser
 
 
 class ImageTransforms:
@@ -183,7 +88,9 @@ class SingleImageFolder:
 
 
 class ImageSegmentationDataset(Dataset):
-    def __init__(self, root_dirs: List[Path], annotation_type: str):
+    def __init__(
+        self, root_dirs: List[Path], annotation_type: str, label_info_reader: LabelInfoReader
+    ):
         """Image dataset
 
         Parameters
@@ -191,6 +98,7 @@ class ImageSegmentationDataset(Dataset):
         root_dir : Path
         annotation_type : str
             Either [2colors, 4colors, or 5colors]
+        label_info_reader: LabelsInfoReader
         """
 
         if not isinstance(root_dirs, list):
@@ -205,7 +113,9 @@ class ImageSegmentationDataset(Dataset):
             self.images_list += single_folder.images_path_list
             self.labels_list += single_folder.label_path_list
 
-        self.label_parser: LabelParser = LabelParser(root_dirs[0] / "mapping.json", annotation_type)
+        self.label_parser: LabelParser = LabelParser(
+            root_dirs[0] / "mapping.json", annotation_type, label_info_reader
+        )
         self.label_channels = self.label_parser.mask_num
 
     def __len__(self):
