@@ -3,6 +3,7 @@ from tqdm import trange
 import torch
 
 import monai
+from monai.bundle import ConfigParser
 from monai.data import ThreadDataLoader
 from monai.networks.nets import FlexibleUNet
 
@@ -57,35 +58,58 @@ def train_with_video_dataset():
 
 
 def train_with_image_dataset():
-    device = "cpu"
-    root = Path("/home/juan1995/research_juan/accelnet_grant/data")
-    train_dirs = [root / "rec01", root / "rec03", root / "rec05"]
-    val_dirs = [root / "rec02", root / "rec04"]
+    # # Config parameters
+    # data_dir = Path("/home/juan1995/research_juan/accelnet_grant/data")
+    # train_dir_list = [data_dir / "rec01", data_dir / "rec03", data_dir / "rec05"]
+    # valid_dir_list = [data_dir / "rec02", data_dir / "rec04"]
+    # annotations_type = "5colors"
+    # pretrained_weights_path = Path("./assets/weights/pretrained-weights")
+    # training_output_path = Path("./assets/weights/myweights_image")
+    # mapping_file = data_dir / "rec01" / annotations_type / "mapping.json"
 
-    mapping_file = root / "rec01" / "5colors" / "mapping.json"
-    label_info_reader = AmbfMultiClassesInfoReader(mapping_file)
+    # device = "cpu"
+    # epochs = 2
+    # learning_rate = 1e-2
 
-    ds = ImageSegmentationDataset(train_dirs, "5colors", label_info_reader)
+    # Config parameters
+    config = ConfigParser()
+    config.read_config("./training_configs/juanubuntu/ambf_train_config.yaml")
+    train_config = config.get_parsed_content("ambf_train_config")
+
+    train_dir_list = train_config["train_dir_list"]
+    valid_dir_list = train_config["val_dir_list"]
+    annotations_type = train_config["annotations_type"]
+    pretrained_weights_path = train_config["pretrained_weights_path"]
+    training_output_path = train_config["training_output_path"]
+    mapping_file = train_config["mapping_file"]
+
+    device = train_config["device"]
+    epochs = train_config["epochs"]
+    learning_rate = train_config["learning_rate"]
+
+    # Train model
+    label_info_reader = AmbfMultiClassesInfoReader(mapping_file, annotations_type)
+    label_info_reader.read()
+
+    ds = ImageSegmentationDataset(train_dir_list, annotations_type, label_info_reader)
     dl = ThreadDataLoader(ds, batch_size=4, num_workers=0, shuffle=True)
 
-    val_ds = ImageSegmentationDataset(val_dirs, "5colors")
+    val_ds = ImageSegmentationDataset(valid_dir_list, annotations_type, label_info_reader)
     val_dl = ThreadDataLoader(val_ds, batch_size=4, num_workers=0, shuffle=True)
 
     print(f"Training dataset size: {len(ds)}")
     print(f"Validation dataset size: {len(val_ds)}")
 
-    pretrained_weigths_path = Path("./assets/weights/pretrained-weights")
-    model = create_FlexibleUnet(device, pretrained_weigths_path, ds.label_channels)
-    optimizer = torch.optim.Adam(model.parameters(), 1e-2)
+    model = create_FlexibleUnet(device, pretrained_weights_path, ds.label_channels)
+    optimizer = torch.optim.Adam(model.parameters(), learning_rate)
 
-    trainer = ModelTrainer(device=device, max_epochs=2)
+    trainer = ModelTrainer(device=device, max_epochs=epochs)
     model, training_stats = trainer.train_model(model, optimizer, dl, validation_dl=val_dl)
 
-    model_path = Path("./assets/weights/myweights_image")
-    model_path.mkdir(exist_ok=True)
-    torch.save(model.state_dict(), model_path / "myweights.pt")
-    training_stats.to_pickle(model_path)
-    training_stats.plot_stats(file_path=model_path)
+    training_output_path.mkdir(exist_ok=True)
+    torch.save(model.state_dict(), training_output_path / "myweights.pt")
+    training_stats.to_pickle(training_output_path)
+    training_stats.plot_stats(file_path=training_output_path)
 
     print(f"Last train IOU {training_stats.iou_list[-1]}")
     print(f"Last validation IOU {training_stats.validation_iou_list[-1]}")
