@@ -7,7 +7,7 @@ from monai.bundle import ConfigParser
 from monai.data import ThreadDataLoader
 from monai.networks.nets import FlexibleUNet
 
-from surg_seg.Datasets.SegmentationLabelParser import AmbfMultiClassesInfoReader
+from surg_seg.Datasets.SegmentationLabelParser import Ambf5RecSegMapReader
 from surg_seg.Datasets.ImageDataset import ImageSegmentationDataset
 from surg_seg.Datasets.VideoDatasets import CombinedVidDataset
 from surg_seg.Trainers.Trainer import ModelTrainer
@@ -75,7 +75,7 @@ def train_with_image_dataset():
     learning_rate = train_config["learning_rate"]
 
     # Train model
-    label_info_reader = AmbfMultiClassesInfoReader(mapping_file, annotations_type)
+    label_info_reader = Ambf5RecSegMapReader(mapping_file, annotations_type)
     label_info_reader.read()
 
     ds = ImageSegmentationDataset(train_dir_list, annotations_type, label_info_reader)

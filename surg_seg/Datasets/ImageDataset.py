@@ -11,7 +11,7 @@ import natsort
 
 from monai.visualize.utils import blend_images
 from dataclasses import InitVar, dataclass, field
-from surg_seg.Datasets.SegmentationLabelParser import LabelInfoReader, LabelParser
+from surg_seg.Datasets.SegmentationLabelParser import LabelInfoReader, SegmentationLabelParser
 
 
 class ImageTransforms:
@@ -113,7 +113,7 @@ class ImageSegmentationDataset(Dataset):
             self.images_list += single_folder.images_path_list
             self.labels_list += single_folder.label_path_list
 
-        self.label_parser: LabelParser = LabelParser(
+        self.label_parser: SegmentationLabelParser = SegmentationLabelParser(
             root_dirs[0] / "mapping.json", annotation_type, label_info_reader
         )
         self.label_channels = self.label_parser.mask_num

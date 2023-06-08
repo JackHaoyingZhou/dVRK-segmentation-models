@@ -18,7 +18,7 @@ class SegmentationLabelInfo:
 
 
 @dataclass
-class LabelParser:
+class SegmentationLabelParser:
     path2mapping: Path
     annotations_type: str
     label_info_reader: LabelInfoReader
@@ -108,7 +108,7 @@ class LabelInfoReader(ABC):
         pass
 
 
-class AmbfMultiClassesInfoReader(LabelInfoReader):
+class Ambf5RecSegMapReader(LabelInfoReader):
     """Read the mapping file for ambf multi-class segmentation."""
 
     def __init__(self, mapping_file: Path, annotations_type: str):
@@ -142,5 +142,5 @@ class AmbfMultiClassesInfoReader(LabelInfoReader):
         ]
 
 
-class DvrkClassesInfoReader(LabelInfoReader):
+class DvrkDataSegMapReader(LabelInfoReader):
     pass
