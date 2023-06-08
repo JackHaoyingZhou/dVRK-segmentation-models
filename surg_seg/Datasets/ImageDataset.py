@@ -32,7 +32,62 @@ class ImageTransforms:
 
 
 @dataclass
-class SingleImageFolder:
+class ImageSegmentationDataset(Dataset):
+    images_list: List[Path]
+    labels_list: List[Path]
+    label_parser: SegmentationLabelParser
+
+    def __len__(self):
+        return len(self.images_list)
+
+    def __getitem__(self, idx, transform=True):
+        if isinstance(idx, slice):
+            RuntimeError("Slices are not supported")
+
+        image = np.array(Image.open(self.images_list[idx]))
+        annotation = np.array(Image.open(self.labels_list[idx]))
+
+        if transform:
+            image = ImageTransforms.img_transforms(image)
+            annotation = self.label_parser.convert_rgb_to_onehot(annotation)
+            annotation = torch.tensor(annotation)
+
+        return {"image": image, "label": annotation}
+
+
+class Ambf5RecDataReader:
+    def __init__(self, root_dirs: List[Path], annotation_type: str):
+        """Image dataset
+
+        Parameters
+        ----------
+        root_dir : Path
+        annotation_type : str
+            Either [2colors, 4colors, or 5colors]
+        """
+
+        if not isinstance(root_dirs, list):
+            root_dirs = [root_dirs]
+
+        self.image_folder_list = []
+        self.images_list = []
+        self.labels_list = []
+        for root_dir in root_dirs:
+            single_folder = SingleFolderReader(root_dir, annotation_type)
+            self.image_folder_list.append(single_folder)
+            self.images_list += single_folder.images_path_list
+            self.labels_list += single_folder.label_path_list
+
+    def __len__(self):
+        return len(self.images_list)
+
+
+@dataclass
+class SingleFolderReader:
+    """
+    Read a single folder of data from the Ambf5Rec dataset
+    """
+
     root_dir: Path
     annotation_type: InitVar[str]
     annotation_path: Path = field(init=False)
@@ -85,55 +140,6 @@ class SingleImageFolder:
             raise RuntimeError(f"Id {id_match} is duplicated")
 
         self.flag_list[id_match] = 1
-
-
-class ImageSegmentationDataset(Dataset):
-    def __init__(
-        self, root_dirs: List[Path], annotation_type: str, label_info_reader: LabelInfoReader
-    ):
-        """Image dataset
-
-        Parameters
-        ----------
-        root_dir : Path
-        annotation_type : str
-            Either [2colors, 4colors, or 5colors]
-        label_info_reader: LabelsInfoReader
-        """
-
-        if not isinstance(root_dirs, list):
-            root_dirs = [root_dirs]
-
-        self.image_folder_list = []
-        self.images_list = []
-        self.labels_list = []
-        for root_dir in root_dirs:
-            single_folder = SingleImageFolder(root_dir, annotation_type)
-            self.image_folder_list.append(single_folder)
-            self.images_list += single_folder.images_path_list
-            self.labels_list += single_folder.label_path_list
-
-        self.label_parser: SegmentationLabelParser = SegmentationLabelParser(
-            root_dirs[0] / "mapping.json", annotation_type, label_info_reader
-        )
-        self.label_channels = self.label_parser.mask_num
-
-    def __len__(self):
-        return len(self.images_list)
-
-    def __getitem__(self, idx, transform=True):
-        if isinstance(idx, slice):
-            RuntimeError("Slices are not supported")
-
-        image = np.array(Image.open(self.images_list[idx]))
-        annotation = np.array(Image.open(self.labels_list[idx]))
-
-        if transform:
-            image = ImageTransforms.img_transforms(image)
-            annotation = self.label_parser.convert_rgb_to_onehot(annotation)
-            annotation = torch.tensor(annotation)
-
-        return {"image": image, "label": annotation}
 
 
 def display_transformed_images(idx: int, ds: ImageSegmentationDataset):

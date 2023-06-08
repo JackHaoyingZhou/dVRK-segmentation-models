@@ -19,8 +19,6 @@ class SegmentationLabelInfo:
 
 @dataclass
 class SegmentationLabelParser:
-    path2mapping: Path
-    annotations_type: str
     label_info_reader: LabelInfoReader
 
     def __post_init__(self) -> None:
@@ -124,6 +122,8 @@ class Ambf5RecSegMapReader(LabelInfoReader):
 
         super().__init__(mapping_file)
         self.annotations_type = annotations_type
+
+        self.read()
 
     def read(self):
 

@@ -7,8 +7,8 @@ from monai.bundle import ConfigParser
 from monai.data import ThreadDataLoader
 from monai.networks.nets import FlexibleUNet
 
-from surg_seg.Datasets.SegmentationLabelParser import Ambf5RecSegMapReader
-from surg_seg.Datasets.ImageDataset import ImageSegmentationDataset
+from surg_seg.Datasets.SegmentationLabelParser import Ambf5RecSegMapReader, SegmentationLabelParser
+from surg_seg.Datasets.ImageDataset import Ambf5RecDataReader, ImageSegmentationDataset
 from surg_seg.Datasets.VideoDatasets import CombinedVidDataset
 from surg_seg.Trainers.Trainer import ModelTrainer
 
@@ -75,19 +75,25 @@ def train_with_image_dataset():
     learning_rate = train_config["learning_rate"]
 
     # Train model
+    train_data_reader = Ambf5RecDataReader(train_dir_list, annotations_type)
+    valid_data_reader = Ambf5RecDataReader(valid_dir_list, annotations_type)
     label_info_reader = Ambf5RecSegMapReader(mapping_file, annotations_type)
-    label_info_reader.read()
+    label_parser = SegmentationLabelParser(label_info_reader)
 
-    ds = ImageSegmentationDataset(train_dir_list, annotations_type, label_info_reader)
+    ds = ImageSegmentationDataset(
+        train_data_reader.images_list, train_data_reader.labels_list, label_parser
+    )
     dl = ThreadDataLoader(ds, batch_size=4, num_workers=0, shuffle=True)
 
-    val_ds = ImageSegmentationDataset(valid_dir_list, annotations_type, label_info_reader)
+    val_ds = ImageSegmentationDataset(
+        valid_data_reader.images_list, valid_data_reader.labels_list, label_info_reader
+    )
     val_dl = ThreadDataLoader(val_ds, batch_size=4, num_workers=0, shuffle=True)
 
     print(f"Training dataset size: {len(ds)}")
     print(f"Validation dataset size: {len(val_ds)}")
 
-    model = create_FlexibleUnet(device, pretrained_weights_path, ds.label_channels)
+    model = create_FlexibleUnet(device, pretrained_weights_path, label_parser.mask_num)
     optimizer = torch.optim.Adam(model.parameters(), learning_rate)
 
     trainer = ModelTrainer(device=device, max_epochs=epochs)
