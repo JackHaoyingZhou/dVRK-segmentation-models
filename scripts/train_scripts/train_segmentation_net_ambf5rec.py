@@ -86,7 +86,7 @@ def train_with_image_dataset():
     dl = ThreadDataLoader(ds, batch_size=4, num_workers=0, shuffle=True)
 
     val_ds = ImageSegmentationDataset(
-        valid_data_reader.images_list, valid_data_reader.labels_list, label_info_reader
+        valid_data_reader.images_list, valid_data_reader.labels_list, label_parser
     )
     val_dl = ThreadDataLoader(val_ds, batch_size=4, num_workers=0, shuffle=True)
 
