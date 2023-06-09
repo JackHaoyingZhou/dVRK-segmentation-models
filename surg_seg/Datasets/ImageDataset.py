@@ -1,3 +1,4 @@
+from abc import ABC
 import json
 from pathlib import Path
 from typing import List
@@ -55,7 +56,17 @@ class ImageSegmentationDataset(Dataset):
         return {"image": image, "label": annotation}
 
 
-class Ambf5RecDataReader:
+class ImageDirParser(ABC):
+    def __init__(self, root_dirs: List[Path]):
+        self.root_dirs: List[Path] = root_dirs
+        self.images_list: List[Path] = []
+        self.labels_list: List[Path] = []
+
+    def __len__(self):
+        return len(self.images_list)
+
+
+class Ambf5RecDataReader(ImageDirParser):
     def __init__(self, root_dirs: List[Path], annotation_type: str):
         """Image dataset
 
@@ -65,13 +76,13 @@ class Ambf5RecDataReader:
         annotation_type : str
             Either [2colors, 4colors, or 5colors]
         """
+        super().__init__(root_dirs)
 
         if not isinstance(root_dirs, list):
             root_dirs = [root_dirs]
 
         self.image_folder_list = []
-        self.images_list = []
-        self.labels_list = []
+
         for root_dir in root_dirs:
             single_folder = SingleFolderReader(root_dir, annotation_type)
             self.image_folder_list.append(single_folder)
