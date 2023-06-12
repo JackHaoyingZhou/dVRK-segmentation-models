@@ -6,6 +6,7 @@ from typing import List
 import json
 import numpy as np
 import torch
+import yaml
 
 
 @dataclass(frozen=True)
@@ -19,6 +20,12 @@ class SegmentationLabelInfo:
 
 @dataclass
 class SegmentationLabelParser:
+    """Class to convert between different segmentation annotations formats. Three formats are supported:
+    1. rgb annotation.
+    2. one-hot encoding.
+    3. single channel encoding: single channel image where each pixel value is the class id.
+    """
+
     label_info_reader: LabelInfoReader
 
     def __post_init__(self) -> None:
@@ -28,6 +35,9 @@ class SegmentationLabelParser:
 
         if self.mask_num == 0:
             raise RuntimeError("No classes found. Maybe label_info_reader.read() was not called?")
+
+    def get_classes_info(self) -> List[SegmentationLabelInfo]:
+        return self.__classes_info
 
     def convert_rgb_to_single_channel(self, label_im, color_first=True):
         """Convert an annotations RGB image into a single channel image. The
@@ -79,7 +89,18 @@ class SegmentationLabelParser:
         m_temp = torch.unsqueeze(m_temp, 0)
         return m_temp
 
-    # def convert_onehot_to_rgb(self, onehot_mask):
+    def convert_single_ch_to_rgb(self, onehot_mask):
+
+        shape = (onehot_mask.shape[0], onehot_mask.shape[1], 3)
+        label_img = np.zeros(shape, dtype=np.uint8)
+
+        e: SegmentationLabelInfo
+        for e in self.__classes_info:
+            rgb = e.rgb
+            class_id = e.id
+            label_img[onehot_mask == class_id] = rgb
+
+        return label_img
 
     # new_mask = np.zeros((1, onehot_mask.shape[1], onehot_mask.shape[2]))
     #     e: LabelParserElement
@@ -97,7 +118,7 @@ class LabelInfoReader(ABC):
     """Abstract class to read segmentation labels metadata."""
 
     def __init__(self, mapping_file: Path):
-        self.mapping_file = mapping_file
+        self.mapping_file: Path = mapping_file
         self.classes_info: List[SegmentationLabelInfo] = []
 
     @abstractmethod
@@ -142,5 +163,44 @@ class Ambf5RecSegMapReader(LabelInfoReader):
         ]
 
 
-class DvrkDataSegMapReader(LabelInfoReader):
-    pass
+class YamlSegMapReader(LabelInfoReader):
+    """Read yaml mapping file for segmentation labels.
+
+    Yaml files are formatted as ambf description files (ADF). First a unique list of `object_names` is defined.
+    Afterwards, each object is defined by a `class_id` and a `rgb` color.
+    Background should always be the first object to be defined
+
+    Example file:
+    -------------
+    ```
+    object_names:
+        - background
+        - needle
+        - instrument
+
+    background:
+        class_id: 0
+        rgb: [0, 0, 0]
+    needle:
+        class_id: 1
+        rgb: [255, 0, 0]
+    instrument:
+        class_id: 1
+        rgb: [0, 255, 0]
+    ```
+    """
+
+    def __init__(self, mapping_file: Path):
+        super().__init__(mapping_file)
+        self.read()
+
+    def read(self):
+
+        with open(self.mapping_file, "r") as f:
+            mapper = yaml.load(f, Loader=yaml.FullLoader)
+
+            for object_name in mapper["object_names"]:
+                new_seg_info = SegmentationLabelInfo(
+                    mapper[object_name]["class_id"], object_name, mapper[object_name]["rgb"]
+                )
+                self.classes_info.append(new_seg_info)
