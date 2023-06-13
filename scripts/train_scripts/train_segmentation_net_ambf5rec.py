@@ -80,14 +80,10 @@ def train_with_image_dataset():
     label_info_reader = Ambf5RecSegMapReader(mapping_file, annotations_type)
     label_parser = SegmentationLabelParser(label_info_reader)
 
-    ds = ImageSegmentationDataset(
-        train_data_reader.images_list, train_data_reader.labels_list, label_parser
-    )
+    ds = ImageSegmentationDataset(label_parser, train_data_reader)
     dl = ThreadDataLoader(ds, batch_size=4, num_workers=0, shuffle=True)
 
-    val_ds = ImageSegmentationDataset(
-        valid_data_reader.images_list, valid_data_reader.labels_list, label_parser
-    )
+    val_ds = ImageSegmentationDataset(label_parser, valid_data_reader)
     val_dl = ThreadDataLoader(val_ds, batch_size=4, num_workers=0, shuffle=True)
 
     print(f"Training dataset size: {len(ds)}")

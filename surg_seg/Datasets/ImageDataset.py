@@ -1,7 +1,8 @@
+from __future__ import annotations
 from abc import ABC
 import json
 from pathlib import Path
-from typing import List
+from typing import Callable, List
 import numpy as np
 import torch
 import torchvision.transforms as T
@@ -34,14 +35,22 @@ class ImageTransforms:
 
 @dataclass
 class ImageSegmentationDataset(Dataset):
-    images_list: List[Path]
-    labels_list: List[Path]
     label_parser: SegmentationLabelParser
+    img_dir_parser: ImageDirParser
+    color_transforms: T.Compose = None
+    geometric_transforms: Callable = None
+
+    def __post_init__(self):
+        self.images_list: List[Path] = self.img_dir_parser.images_list
+        self.labels_list: List[Path] = self.img_dir_parser.labels_list
+
+        if self.color_transforms is None:
+            self.color_transforms = ImageTransforms.img_transforms
 
     def __len__(self):
         return len(self.images_list)
 
-    def __getitem__(self, idx, transform=True):
+    def __getitem__(self, idx, transform: bool = True):
         if isinstance(idx, slice):
             RuntimeError("Slices are not supported")
 
@@ -49,9 +58,12 @@ class ImageSegmentationDataset(Dataset):
         annotation = np.array(Image.open(self.labels_list[idx]))
 
         if transform:
-            image = ImageTransforms.img_transforms(image)
+            image = self.color_transforms(image)
             annotation = self.label_parser.convert_rgb_to_onehot(annotation)
             annotation = torch.tensor(annotation)
+
+            if self.geometric_transforms is not None:
+                image, annotation = self.geometric_transforms(image, annotation)
 
         return {"image": image, "label": annotation}
 
