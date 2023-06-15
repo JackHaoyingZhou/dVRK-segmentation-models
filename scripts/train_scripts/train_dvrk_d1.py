@@ -74,7 +74,7 @@ class ImageTransforms:
         ]
     )
 
-    def functional_transforms(image, mask):
+    def geometric_transforms(image, mask):
         i, j, h, w = transforms.RandomCrop.get_params(image, output_size=(480, 640))
         image = TF.crop(image, i, j, h, w)
         mask = TF.crop(mask, i, j, h, w)
@@ -102,10 +102,7 @@ class CustomImageDirParser(ImageDirParser):
         self.labels_list = natsorted(list((root_dir / "label").glob("*.png")))
 
 
-def train_with_image_dataset():
-    # Config parameters
-    config = ConfigParser()
-    config.read_config("./training_configs/juanubuntu/dvrk_train_config.yaml")
+def train_with_image_dataset(config: ConfigParser):
     train_config = config.get_parsed_content("ambf_train_config")
 
     train_dir_list = train_config["train_dir_list"]
@@ -128,17 +125,18 @@ def train_with_image_dataset():
         label_parser,
         train_data_reader,
         color_transforms=ImageTransforms.img_transforms_train,
-        geometric_transforms=ImageTransforms.functional_transforms,
+        geometric_transforms=ImageTransforms.geometric_transforms,
     )
-    dl = ThreadDataLoader(ds, batch_size=4, num_workers=0, shuffle=True)
+    dl = ThreadDataLoader(ds, batch_size=8, num_workers=2, shuffle=True)
 
     val_ds = ImageSegmentationDataset(
         label_parser, valid_data_reader, color_transforms=ImageTransforms.img_transforms_valid
     )
-    val_dl = ThreadDataLoader(val_ds, batch_size=4, num_workers=0, shuffle=True)
+    val_dl = ThreadDataLoader(val_ds, batch_size=8, num_workers=2, shuffle=True)
 
     print(f"Training dataset size: {len(ds)}")
     print(f"Validation dataset size: {len(val_ds)}")
+    print(f"Number of output clases: {label_parser.mask_num}")
 
     model = create_FlexibleUnet(device, pretrained_weights_path, label_parser.mask_num)
     optimizer = torch.optim.Adam(model.parameters(), learning_rate)
@@ -155,15 +153,16 @@ def train_with_image_dataset():
     print(f"Last validation IOU {training_stats.validation_iou_list[-1]}")
 
 
-def show_images():
-    config = ConfigParser()
-    config.read_config("./training_configs/juanubuntu/dvrk_train_config.yaml")
+def show_images(config: ConfigParser, show_valid: str = False):
     train_config = config.get_parsed_content("ambf_train_config")
-    train_dir_list = train_config["train_dir_list"]
     mapping_file = train_config["mapping_file"]
+    if show_valid:
+        dir_list = train_config["val_dir_list"]
+    else:
+        dir_list = train_config["train_dir_list"]
 
     # Train model
-    train_data_reader = CustomImageDirParser(train_dir_list)
+    train_data_reader = CustomImageDirParser(dir_list)
     label_info_reader = YamlSegMapReader(mapping_file)
     label_parser = SegmentationLabelParser(label_info_reader)
 
@@ -171,7 +170,7 @@ def show_images():
         label_parser,
         train_data_reader,
         color_transforms=ImageTransforms.img_transforms_train,
-        geometric_transforms=ImageTransforms.functional_transforms,
+        geometric_transforms=ImageTransforms.geometric_transforms,
     )
     dl = ThreadDataLoader(ds, batch_size=1, num_workers=0, shuffle=True)
 
@@ -195,8 +194,12 @@ def show_images():
 
 
 def main():
-    show_images()
-    # train_with_image_dataset()
+    # Config parameters
+    config = ConfigParser()
+    config.read_config("./training_configs/thin7/dvrk_train_config.yaml")
+
+    # show_images(config, show_valid=True)
+    train_with_image_dataset(config)
 
 
 if __name__ == "__main__":
