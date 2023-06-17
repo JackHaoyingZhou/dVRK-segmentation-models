@@ -15,6 +15,10 @@ ambf_train_config:
   epochs: 2
   learning_rate: $float("1e-3")
 
+test:
+  root: $Path('/home/juan1995/research_juan/accelnet_grant/dVRK-segmentation-models/assets/weights/')
+  weights: $@test#root / 'myweights_realdvrk_d1_v0.0/myweights.pt'
+
 check_paths:
   - $print("train_dir exists:", @ambf_train_config#train_dir_list[0].exists())
   - $print("valid exists:", @ambf_train_config#val_dir_list[0].exists())

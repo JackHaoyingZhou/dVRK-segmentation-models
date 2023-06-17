@@ -23,6 +23,7 @@ from surg_seg.Datasets.ImageDataset import (
     ImageDirParser,
     ImageSegmentationDataset,
 )
+from surg_seg.Networks.Models import FlexibleUnet1InferencePipe
 from surg_seg.Trainers.Trainer import ModelTrainer
 
 
@@ -193,13 +194,62 @@ def show_images(config: ConfigParser, show_valid: str = False):
     plt.show()
 
 
+def inference_on_valid(config: ConfigParser):
+    device = "cuda"
+    mapping_file = config.get_parsed_content("ambf_train_config#mapping_file")
+    valid_dir_list = config.get_parsed_content("ambf_train_config#val_dir_list")
+    path2weights = config.get_parsed_content("test#weights")
+
+    train_data_reader = CustomImageDirParser(valid_dir_list)
+    label_info_reader = YamlSegMapReader(mapping_file)
+    label_parser = SegmentationLabelParser(label_info_reader)
+
+    ds = ImageSegmentationDataset(
+        label_parser,
+        train_data_reader,
+        color_transforms=ImageTransforms.img_transforms_train,
+    )
+    dl = ThreadDataLoader(ds, batch_size=1, num_workers=0, shuffle=True)
+
+    model_pipe = FlexibleUnet1InferencePipe(
+        path2weights, device, out_channels=label_parser.mask_num
+    )
+    model_pipe.model.eval()
+
+    fig, axes = plt.subplots(3, 3, figsize=(8, 8))
+    fig.set_tight_layout(True)
+    fig.subplots_adjust(hspace=0, wspace=0)
+    for i, ax in enumerate(axes.flat):
+        # pair = next(iter(dl))
+        pair = ds.__getitem__(i, transform=False)
+        im = pair["image"]
+        lb = pair["label"]
+        print(im.shape)
+        input_tensor, inferred_single_ch = model_pipe.infer(im)
+
+        inferred_single_ch = inferred_single_ch.detach().cpu()
+        input_tensor = input_tensor.detach().cpu()[0]
+        blended = blend_images(input_tensor, inferred_single_ch, cmap="viridis", alpha=0.8).numpy()
+        blended = (np.transpose(blended, (1, 2, 0)) * 254).astype(np.uint8)
+
+        # im = ImageTransforms.inv_transforms(im)
+        # lb = label_parser.convert_onehot_to_single_ch(lb)
+        # blended = blend_images(im, lb, cmap="viridis", alpha=0.7)
+        # blended = blended.numpy().transpose(1, 2, 0)
+        # blended = (blended * 255).astype(np.uint8)
+        ax.imshow(blended)
+        ax.axis("off")
+    plt.show()
+
+
 def main():
     # Config parameters
     config = ConfigParser()
-    config.read_config("./training_configs/thin7/dvrk_train_config.yaml")
+    config.read_config("./training_configs/juanubuntu/dvrk_train_config.yaml")
 
     # show_images(config, show_valid=True)
-    train_with_image_dataset(config)
+    # train_with_image_dataset(config)
+    inference_on_valid(config)
 
 
 if __name__ == "__main__":
