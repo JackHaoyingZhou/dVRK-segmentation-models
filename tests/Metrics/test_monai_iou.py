@@ -5,7 +5,7 @@ from pathlib import Path
 from PIL import Image
 from natsort import natsorted
 import numpy as np
-from monai.metrics.meaniou import compute_iou, compute_meaniou
+from monai.metrics.meaniou import compute_iou, MeanIoU
 from surg_seg.Datasets.SegmentationLabelParser import YamlSegMapReader, SegmentationLabelParser
 
 data_path = Path(__file__).parent / "./Data/"
@@ -97,4 +97,58 @@ def test_batch_label_iou_value(sample_data: Dict[str, torch.Tensor]):
     iou_tensor = compute_iou(label, label, include_background=False)
 
     answer = torch.tensor([[1.0, 1.0], [1.0, 1.0], [1.0, 1.0]])
+
     assert torch.allclose(iou_tensor, answer), "IOU tensor value is {}".format(iou_tensor)
+
+
+def test_MeanIOU_class(sample_data: Dict[str, torch.Tensor]):
+
+    batch_label = sample_data["label"]
+
+    iou_metric = MeanIoU(include_background=False, reduction="mean")
+
+    batch_iou = iou_metric(y_pred=batch_label, y=batch_label)
+    epoch_iou = iou_metric.aggregate().item()
+    assert np.isclose(epoch_iou, 1.0), "IOU metric value is {}".format(epoch_iou)
+    iou_metric.reset()
+
+
+def test_MeanIOU_get_buffer_method_with_single_batch(sample_data: Dict[str, torch.Tensor]):
+
+    batch_label = sample_data["label"]
+    iou_metric = MeanIoU(include_background=False, reduction="mean")
+    batch_iou = iou_metric(y_pred=batch_label, y=batch_label)
+
+    epoch_iou = iou_metric.get_buffer()
+
+    assert epoch_iou.shape == (3, 2), f"IOU metric buffer shape is {epoch_iou.shape}"
+
+    iou_metric.reset()
+
+
+def test_MeanIOU_get_buffer_method_with_mult_batch(sample_data: Dict[str, torch.Tensor]):
+
+    batch_label = sample_data["label"]
+
+    batch1 = torch.unsqueeze(batch_label[0], 0)
+    batch2 = batch_label[1:]
+
+    iou_metric = MeanIoU(include_background=False, reduction="mean")
+
+    for b in [batch1, batch2]:
+        batch_iou = iou_metric(y_pred=b, y=b)
+
+    epoch_iou = iou_metric.get_buffer()
+    assert epoch_iou.shape == (3, 2), f"IOU metric buffer shape is {epoch_iou.shape}"
+
+    iou_metric.reset()
+
+
+def test_MeanIOU_get_buffer_method_with_background(sample_data: Dict[str, torch.Tensor]):
+
+    batch_label = sample_data["label"]
+    iou_metric = MeanIoU(include_background=True, reduction="mean")
+    batch_iou = iou_metric(y_pred=batch_label, y=batch_label)
+
+    assert batch_iou.shape == (3, 3), f"IOU metric buffer shape is {batch_iou.shape}"
+    iou_metric.reset()
