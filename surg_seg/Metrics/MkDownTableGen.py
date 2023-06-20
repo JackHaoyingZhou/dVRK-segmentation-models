@@ -51,7 +51,7 @@ class MarkdownTable:
         )
 
     def print(self, floatfmt=".4f"):
-        print(self.get_full_table(floatfmt=floatfmt))
+        print(f"\n{self.get_full_table(floatfmt=floatfmt)}\n")
 
 
 if __name__ == "__main__":

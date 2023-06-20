@@ -5,13 +5,14 @@ import numpy as np
 from typing import List
 from matplotlib import pyplot as plt
 import monai
-from tqdm import trange
+from tqdm import tqdm, trange
 from monai.visualize.utils import blend_images
 import torch
 import torchvision.transforms as T
 from monai.bundle import ConfigParser
 from monai.data import ThreadDataLoader
 from monai.networks.nets import FlexibleUNet
+import monai.transforms as mt
 from torchvision import transforms
 from torchvision.transforms import functional as TF
 
@@ -23,6 +24,7 @@ from surg_seg.Datasets.ImageDataset import (
     ImageDirParser,
     ImageSegmentationDataset,
 )
+from surg_seg.Metrics.MetricsUtils import AggregatedMetricTable, IOUStats
 from surg_seg.Networks.Models import FlexibleUnet1InferencePipe
 from surg_seg.Trainers.Trainer import ModelTrainer
 
@@ -90,6 +92,13 @@ class ImageTransforms:
             mask = TF.vflip(mask)
 
         return image, mask
+
+    predictions_trans = mt.Compose(
+        [
+            mt.Activations(sigmoid=True),
+            mt.AsDiscrete(threshold=0.5),
+        ]
+    )
 
 
 class CustomImageDirParser(ImageDirParser):
@@ -242,6 +251,44 @@ def inference_on_valid(config: ConfigParser):
     plt.show()
 
 
+def calculate_metrics_on_valid(config: ConfigParser):
+    device = "cuda"
+    mapping_file = config.get_parsed_content("ambf_train_config#mapping_file")
+    valid_dir_list = config.get_parsed_content("ambf_train_config#val_dir_list")
+    path2weights = config.get_parsed_content("test#weights")
+
+    train_data_reader = CustomImageDirParser(valid_dir_list)
+    label_info_reader = YamlSegMapReader(mapping_file)
+    label_parser = SegmentationLabelParser(label_info_reader)
+
+    ds = ImageSegmentationDataset(
+        label_parser,
+        train_data_reader,
+        color_transforms=ImageTransforms.img_transforms_train,
+    )
+    dl = ThreadDataLoader(ds, batch_size=1, num_workers=2, shuffle=True)
+
+    model_pipe = FlexibleUnet1InferencePipe(
+        path2weights, device, out_channels=label_parser.mask_num
+    )
+    model_pipe.model.eval()
+
+    iou_stats = IOUStats(label_parser)
+    for batch in tqdm(dl, desc="Calculating metrics"):
+        img = batch["image"].to(device)
+        label = batch["label"]
+        img_paths = ["empty"] * label.shape[0]
+
+        prediction = model_pipe.model(img).detach().cpu()
+        onehot_prediction = ImageTransforms.predictions_trans(prediction)
+        iou_stats.calculate_metrics_from_batch(onehot_prediction, label, img_paths)
+
+    iou_stats.calculate_aggregated_stats()
+    table = AggregatedMetricTable(iou_stats)
+    table.fill_table()
+    table.print_table()
+
+
 def main():
     # Config parameters
     config = ConfigParser()
@@ -249,7 +296,8 @@ def main():
 
     # show_images(config, show_valid=True)
     # train_with_image_dataset(config)
-    inference_on_valid(config)
+    # inference_on_valid(config)
+    calculate_metrics_on_valid(config)
 
 
 if __name__ == "__main__":
