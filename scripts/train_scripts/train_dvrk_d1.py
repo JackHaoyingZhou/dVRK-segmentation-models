@@ -1,20 +1,13 @@
 from pathlib import Path
-import random
 from natsort import natsorted
 import numpy as np
-from typing import List
+from typing import List, Tuple
 from matplotlib import pyplot as plt
-import monai
-from tqdm import tqdm, trange
+from tqdm import tqdm
 from monai.visualize.utils import blend_images
 import torch
-import torchvision.transforms as T
 from monai.bundle import ConfigParser
 from monai.data import ThreadDataLoader
-from monai.networks.nets import FlexibleUNet
-import monai.transforms as mt
-from torchvision import transforms
-from torchvision.transforms import functional as TF
 
 from surg_seg.Datasets.SegmentationLabelParser import (
     SegmentationLabelParser,
@@ -24,83 +17,14 @@ from surg_seg.Datasets.ImageDataset import (
     ImageDirParser,
     ImageSegmentationDataset,
 )
+from surg_seg.ImageTransforms.ImageTransforms import ImageTransforms
 from surg_seg.Metrics.MetricsUtils import AggregatedMetricTable, IOUStats
-from surg_seg.Networks.Models import FlexibleUnet1InferencePipe
+from surg_seg.Networks.Models import FlexibleUnet1InferencePipe, create_FlexibleUnet
 from surg_seg.Trainers.Trainer import ModelTrainer
 
-
-def create_FlexibleUnet(device, pretrained_weights_path: Path, out_channels: int):
-    model = FlexibleUNet(
-        in_channels=3,
-        out_channels=out_channels,
-        backbone="efficientnet-b0",
-        pretrained=True,
-        is_pad=False,
-    ).to(device)
-
-    pretrained_weights = monai.bundle.load(
-        name="endoscopic_tool_segmentation", bundle_dir=pretrained_weights_path, version="0.2.0"
-    )
-    model_weight = model.state_dict()
-    weights_no_head = {k: v for k, v in pretrained_weights.items() if not "segmentation_head" in k}
-    model_weight.update(weights_no_head)
-    model.load_state_dict(model_weight)
-
-    return model
-
-
-class ImageTransforms:
-
-    img_transforms_train = T.Compose(
-        [
-            T.ToTensor(),
-            T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),  # ImageNet normalize
-            # T.RandomCrop((480, 640)),
-            # T.RandomVerticalFlip(),
-            # T.RandomHorizontalFlip(),
-            # T.RandomInvert(0.5),
-            # T.ColorJitter(),
-            # T.RandomGrayscale(0.1),
-        ]
-    )
-    img_transforms_valid = T.Compose(
-        [
-            T.ToTensor(),
-            T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),  # ImageNet normalize
-        ]
-    )
-    # https://discuss.pytorch.org/t/simple-way-to-inverse-transform-normalization/4821/3
-    inv_transforms = T.Compose(
-        [
-            T.Normalize(mean=[0.0, 0.0, 0.0], std=[1 / 0.229, 1 / 0.224, 1 / 0.225]),
-            T.Normalize(mean=[-0.485, -0.456, -0.406], std=[1.0, 1.0, 1.0]),
-        ]
-    )
-
-    def geometric_transforms(image, mask):
-        i, j, h, w = transforms.RandomCrop.get_params(image, output_size=(480, 640))
-        image = TF.crop(image, i, j, h, w)
-        mask = TF.crop(mask, i, j, h, w)
-
-        # Random horizontal flipping
-        if random.random() > 0.5:
-            image = TF.hflip(image)
-            mask = TF.hflip(mask)
-        # Random vertical flipping
-        if random.random() > 0.5:
-            image = TF.vflip(image)
-            mask = TF.vflip(mask)
-
-        return image, mask
-
-    predictions_trans = mt.Compose(
-        [
-            mt.Activations(sigmoid=True),
-            mt.AsDiscrete(threshold=0.5),
-        ]
-    )
-
-
+##################################################################
+# Concrete implementation of abstract classes
+##################################################################
 class CustomImageDirParser(ImageDirParser):
     def __init__(self, root_dirs: List[Path]):
         super().__init__(root_dirs)
@@ -112,48 +36,85 @@ class CustomImageDirParser(ImageDirParser):
         self.labels_list = natsorted(list((root_dir / "label").glob("*.png")))
 
 
-def train_with_image_dataset(config: ConfigParser):
+##################################################################
+# Auxiliary functions
+##################################################################
+def create_label_parser(config: ConfigParser) -> SegmentationLabelParser:
     train_config = config.get_parsed_content("ambf_train_config")
-
-    train_dir_list = train_config["train_dir_list"]
-    valid_dir_list = train_config["val_dir_list"]
-    pretrained_weights_path = train_config["pretrained_weights_path"]
-    training_output_path = train_config["training_output_path"]
     mapping_file = train_config["mapping_file"]
-
-    device = train_config["device"]
-    epochs = train_config["epochs"]
-    learning_rate = train_config["learning_rate"]
-
-    # Train model
-    train_data_reader = CustomImageDirParser(train_dir_list)
-    valid_data_reader = CustomImageDirParser(valid_dir_list)
     label_info_reader = YamlSegMapReader(mapping_file)
     label_parser = SegmentationLabelParser(label_info_reader)
+
+    return label_parser
+
+
+def create_train_dataset_and_dataloader(
+    config: ConfigParser, label_parser: SegmentationLabelParser, batch_size: int
+) -> Tuple[ImageSegmentationDataset, ThreadDataLoader]:
+
+    train_config = config.get_parsed_content("ambf_train_config")
+    train_dir_list = train_config["train_dir_list"]
+    train_data_reader = CustomImageDirParser(train_dir_list)
 
     ds = ImageSegmentationDataset(
         label_parser,
         train_data_reader,
-        color_transforms=ImageTransforms.img_transforms_train,
+        color_transforms=ImageTransforms.img_transforms,
         geometric_transforms=ImageTransforms.geometric_transforms,
     )
-    dl = ThreadDataLoader(ds, batch_size=8, num_workers=2, shuffle=True)
+    dl = ThreadDataLoader(ds, batch_size=batch_size, num_workers=2, shuffle=True)
+
+    return ds, dl
+
+
+def create_valid_dataset_and_dataloader(
+    config: ConfigParser, label_parser: SegmentationLabelParser, batch_size: int
+) -> Tuple[ImageSegmentationDataset, ThreadDataLoader]:
+    train_config = config.get_parsed_content("ambf_train_config")
+    valid_dir_list = train_config["val_dir_list"]
+
+    valid_data_reader = CustomImageDirParser(valid_dir_list)
 
     val_ds = ImageSegmentationDataset(
-        label_parser, valid_data_reader, color_transforms=ImageTransforms.img_transforms_valid
+        label_parser, valid_data_reader, color_transforms=ImageTransforms.img_transforms
     )
-    val_dl = ThreadDataLoader(val_ds, batch_size=8, num_workers=2, shuffle=True)
+    val_dl = ThreadDataLoader(val_ds, batch_size=batch_size, num_workers=2, shuffle=True)
+
+    return val_ds, val_dl
+
+
+##################################################################
+# Main functions
+##################################################################
+
+
+def train_with_image_dataset(config: ConfigParser):
+    train_config = config.get_parsed_content("ambf_train_config")
+    device = train_config["device"]
+
+    # Load data
+    label_parser = create_label_parser(config)
+    ds, dl = create_train_dataset_and_dataloader(config, label_parser, batch_size=8)
+    val_ds, val_dl = create_valid_dataset_and_dataloader(config, label_parser, batch_size=8)
 
     print(f"Training dataset size: {len(ds)}")
     print(f"Validation dataset size: {len(val_ds)}")
     print(f"Number of output clases: {label_parser.mask_num}")
 
+    # Load model
+    pretrained_weights_path = train_config["pretrained_weights_path"]
     model = create_FlexibleUnet(device, pretrained_weights_path, label_parser.mask_num)
     optimizer = torch.optim.Adam(model.parameters(), learning_rate)
+
+    # Load trainer
+    training_output_path = train_config["training_output_path"]
+    epochs = train_config["epochs"]
+    learning_rate = train_config["learning_rate"]
 
     trainer = ModelTrainer(device=device, max_epochs=epochs)
     model, training_stats = trainer.train_model(model, optimizer, dl, validation_dl=val_dl)
 
+    # Save model
     training_output_path.mkdir(exist_ok=True)
     torch.save(model.state_dict(), training_output_path / "myweights.pt")
     training_stats.to_pickle(training_output_path)
@@ -165,24 +126,14 @@ def train_with_image_dataset(config: ConfigParser):
 
 def show_images(config: ConfigParser, show_valid: str = False):
     train_config = config.get_parsed_content("ambf_train_config")
-    mapping_file = train_config["mapping_file"]
+
+    label_parser = create_label_parser(config)
     if show_valid:
-        dir_list = train_config["val_dir_list"]
+        print("Showing validation images")
+        ds, dl = create_valid_dataset_and_dataloader(config, label_parser, batch_size=1)
     else:
-        dir_list = train_config["train_dir_list"]
-
-    # Train model
-    train_data_reader = CustomImageDirParser(dir_list)
-    label_info_reader = YamlSegMapReader(mapping_file)
-    label_parser = SegmentationLabelParser(label_info_reader)
-
-    ds = ImageSegmentationDataset(
-        label_parser,
-        train_data_reader,
-        color_transforms=ImageTransforms.img_transforms_train,
-        geometric_transforms=ImageTransforms.geometric_transforms,
-    )
-    dl = ThreadDataLoader(ds, batch_size=1, num_workers=0, shuffle=True)
+        print("Showing training images")
+        ds, dl = create_valid_dataset_and_dataloader(config, label_parser, batch_size=1)
 
     fig, axes = plt.subplots(3, 3, figsize=(8, 8))
     fig.set_tight_layout(True)
@@ -203,22 +154,12 @@ def show_images(config: ConfigParser, show_valid: str = False):
     plt.show()
 
 
-def inference_on_valid(config: ConfigParser):
+def show_inference_samples(config: ConfigParser):
     device = "cuda"
-    mapping_file = config.get_parsed_content("ambf_train_config#mapping_file")
-    valid_dir_list = config.get_parsed_content("ambf_train_config#val_dir_list")
     path2weights = config.get_parsed_content("test#weights")
 
-    train_data_reader = CustomImageDirParser(valid_dir_list)
-    label_info_reader = YamlSegMapReader(mapping_file)
-    label_parser = SegmentationLabelParser(label_info_reader)
-
-    ds = ImageSegmentationDataset(
-        label_parser,
-        train_data_reader,
-        color_transforms=ImageTransforms.img_transforms_train,
-    )
-    dl = ThreadDataLoader(ds, batch_size=1, num_workers=0, shuffle=True)
+    label_parser = create_label_parser(config)
+    ds, dl = create_valid_dataset_and_dataloader(config, label_parser, batch_size=1)
 
     model_pipe = FlexibleUnet1InferencePipe(
         path2weights, device, out_channels=label_parser.mask_num
@@ -253,23 +194,10 @@ def inference_on_valid(config: ConfigParser):
 
 def calculate_metrics_on_valid(config: ConfigParser):
     device = "cuda"
-    mapping_file = config.get_parsed_content("ambf_train_config#mapping_file")
-    valid_dir_list = config.get_parsed_content("ambf_train_config#val_dir_list")
     path2weights = config.get_parsed_content("test#weights")
 
-    predictions_dir: Path = config.get_parsed_content("test#predictions_dir")
-    predictions_dir.mkdir(exist_ok=True)
-
-    train_data_reader = CustomImageDirParser(valid_dir_list)
-    label_info_reader = YamlSegMapReader(mapping_file)
-    label_parser = SegmentationLabelParser(label_info_reader)
-
-    ds = ImageSegmentationDataset(
-        label_parser,
-        train_data_reader,
-        color_transforms=ImageTransforms.img_transforms_train,
-    )
-    dl = ThreadDataLoader(ds, batch_size=1, num_workers=2, shuffle=True)
+    label_parser = create_label_parser(config)
+    ds, dl = create_valid_dataset_and_dataloader(config, label_parser, batch_size=1)
 
     model_pipe = FlexibleUnet1InferencePipe(
         path2weights, device, out_channels=label_parser.mask_num
@@ -283,7 +211,7 @@ def calculate_metrics_on_valid(config: ConfigParser):
         img_paths = ["empty"] * label.shape[0]
 
         prediction = model_pipe.model(img).detach().cpu()
-        onehot_prediction = ImageTransforms.predictions_trans(prediction)
+        onehot_prediction = ImageTransforms.predictions_transforms(prediction)
         iou_stats.calculate_metrics_from_batch(onehot_prediction, label, img_paths)
 
         # img = img.detach().cpu()[0]
@@ -307,10 +235,13 @@ def main():
     config = ConfigParser()
     config.read_config("./training_configs/juanubuntu/dvrk_train_config.yaml")
 
-    # show_images(config, show_valid=True)
+    show_images(config, show_valid=True)
+
     # train_with_image_dataset(config)
-    # inference_on_valid(config)
-    calculate_metrics_on_valid(config)
+
+    show_inference_samples(config)
+
+    # calculate_metrics_on_valid(config)
 
 
 if __name__ == "__main__":

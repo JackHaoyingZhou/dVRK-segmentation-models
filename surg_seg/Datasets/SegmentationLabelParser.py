@@ -127,42 +127,6 @@ class LabelInfoReader(ABC):
         pass
 
 
-class Ambf5RecSegMapReader(LabelInfoReader):
-    """Read the mapping file for ambf multi-class segmentation."""
-
-    def __init__(self, mapping_file: Path, annotations_type: str):
-        """
-        Read segmentation labels mapping files
-
-        Parameters
-        ----------
-        mapping_file : Path
-        annotation_type : str
-            Either [2colors, 4colors, or 5colors]
-        """
-
-        super().__init__(mapping_file)
-        self.annotations_type = annotations_type
-
-        self.read()
-
-    def read(self):
-
-        with open(self.mapping_file, "r") as f:
-            mapper = json.load(f)
-
-        if self.annotations_type in mapper:
-            mask = mapper[self.annotations_type]
-        else:
-            raise RuntimeWarning(
-                f"annotations type {self.annotations_type} not found in {self.path2mapping}"
-            )
-
-        self.classes_info = [
-            SegmentationLabelInfo(idx, key, value) for idx, (key, value) in enumerate(mask.items())
-        ]
-
-
 class YamlSegMapReader(LabelInfoReader):
     """Read yaml mapping file for segmentation labels.
 

@@ -1,37 +1,153 @@
+from dataclasses import InitVar, dataclass, field
+import json
 from pathlib import Path
-from tqdm import trange
+import re
+from typing import List
+import natsort
+import numpy as np
 import torch
-
-import monai
 from monai.bundle import ConfigParser
 from monai.data import ThreadDataLoader
-from monai.networks.nets import FlexibleUNet
-
-from surg_seg.Datasets.SegmentationLabelParser import Ambf5RecSegMapReader, SegmentationLabelParser
-from surg_seg.Datasets.ImageDataset import Ambf5RecDataReader, ImageSegmentationDataset
+from surg_seg.Datasets.SegmentationLabelParser import LabelInfoReader, SegmentationLabelInfo, SegmentationLabelParser
+from surg_seg.Datasets.ImageDataset import ImageDirParser, ImageSegmentationDataset
 from surg_seg.Datasets.VideoDatasets import CombinedVidDataset
+from surg_seg.Networks.Models import create_FlexibleUnet
 from surg_seg.Trainers.Trainer import ModelTrainer
 
+##################################################################
+# Concrete implementation of abstract classes
+##################################################################
 
-def create_FlexibleUnet(device, pretrained_weights_path: Path, out_channels: int):
+class Ambf5RecSegMapReader(LabelInfoReader):
+    """Read the mapping file for ambf multi-class segmentation."""
 
-    model = FlexibleUNet(
-        in_channels=3,
-        out_channels=out_channels,
-        backbone="efficientnet-b0",
-        pretrained=True,
-        is_pad=False,
-    ).to(device)
+    def __init__(self, mapping_file: Path, annotations_type: str):
+        """
+        Read segmentation labels mapping files
 
-    pretrained_weights = monai.bundle.load(
-        name="endoscopic_tool_segmentation", bundle_dir=pretrained_weights_path, version="0.2.0"
-    )
-    model_weight = model.state_dict()
-    weights_no_head = {k: v for k, v in pretrained_weights.items() if not "segmentation_head" in k}
-    model_weight.update(weights_no_head)
-    model.load_state_dict(model_weight)
+        Parameters
+        ----------
+        mapping_file : Path
+        annotation_type : str
+            Either [2colors, 4colors, or 5colors]
+        """
 
-    return model
+        super().__init__(mapping_file)
+        self.annotations_type = annotations_type
+
+        self.read()
+
+    def read(self):
+
+        with open(self.mapping_file, "r") as f:
+            mapper = json.load(f)
+
+        if self.annotations_type in mapper:
+            mask = mapper[self.annotations_type]
+        else:
+            raise RuntimeWarning(
+                f"annotations type {self.annotations_type} not found in {self.path2mapping}"
+            )
+
+        self.classes_info = [
+            SegmentationLabelInfo(idx, key, value) for idx, (key, value) in enumerate(mask.items())
+        ]
+
+
+class Ambf5RecDataReader(ImageDirParser):
+    def __init__(self, root_dirs: List[Path], annotation_type: str):
+        """Image dataset
+
+        Parameters
+        ----------
+        root_dir : Path
+        annotation_type : str
+            Either [2colors, 4colors, or 5colors]
+        """
+        super().__init__(root_dirs)
+
+        if not isinstance(root_dirs, list):
+            root_dirs = [root_dirs]
+
+        self.image_folder_list = []
+
+        for root_dir in root_dirs:
+            single_folder = SingleFolderReader(root_dir, annotation_type)
+            self.image_folder_list.append(single_folder)
+            self.images_list += single_folder.images_path_list
+            self.labels_list += single_folder.label_path_list
+
+    def __len__(self):
+        return len(self.images_list)
+
+
+@dataclass
+class SingleFolderReader:
+    """
+    Read a single folder of data from the Ambf5Rec dataset
+    """
+
+    root_dir: Path
+    annotation_type: InitVar[str]
+    annotation_path: Path = field(init=False)
+    image_path_list: List[Path] = field(init=False)
+    label_path_list: List[Path] = field(init=False)
+    image_id_list: List[int] = field(init=False)
+    # Auxiliary variables used to identify duplicated ids in image folder
+    flag_list: List[int] = field(init=False)
+
+    def __post_init__(self, annotation_type):
+
+        self.annotation_dir = self.__get_annotation_dir(annotation_type)
+
+        self.images_path_list = natsort.natsorted(list((self.root_dir / "raw").glob("*.png")))
+        self.flag_list = np.zeros(len(self.images_path_list))
+        self.images_id_list = self.compute_id_list()
+
+        self.label_path_list = [self.annotation_dir / img.name for img in self.images_path_list]
+
+    def compute_id_list(self):
+        ids = []
+        img_name: Path
+        for img_name in self.images_path_list:
+            id_match = self.__extract_id(img_name.name)
+            self.__check_and_mark_id(id_match)
+            ids.append(id_match)
+        return ids
+
+    def __get_annotation_dir(self, annotation_type):
+        valid_options = ["2colors", "4colors", "5colors"]
+        if annotation_type not in valid_options:
+            raise RuntimeError(
+                f"{annotation_type} is not a valid annotation.\n Valid annotations are {valid_options}"
+            )
+        return self.root_dir / ("annotation" + annotation_type)
+
+    def __extract_id(self, img_name: str) -> int:
+        """Extract id from image name"""
+        id_match = re.findall("[0-9]{6}", img_name)
+
+        if len(id_match) == 0:
+            raise RuntimeError(f"Image {img_name} not formatted correctly")
+
+        id_match = int(id_match[0])
+        return id_match
+
+    def __check_and_mark_id(self, id_match):
+        """Check that there are no duplicated id"""
+        if self.flag_list[id_match]:
+            raise RuntimeError(f"Id {id_match} is duplicated")
+
+        self.flag_list[id_match] = 1
+
+
+##################################################################
+# Auxiliary functions
+##################################################################
+
+##################################################################
+# Main functions
+##################################################################
 
 
 def train_with_video_dataset():

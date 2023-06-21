@@ -14,23 +14,7 @@ import natsort
 from monai.visualize.utils import blend_images
 from dataclasses import InitVar, dataclass, field
 from surg_seg.Datasets.SegmentationLabelParser import LabelInfoReader, SegmentationLabelParser
-
-
-class ImageTransforms:
-
-    img_transforms = T.Compose(
-        [
-            T.ToTensor(),
-            T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),  # ImageNet normalize
-        ]
-    )
-    # https://discuss.pytorch.org/t/simple-way-to-inverse-transform-normalization/4821/3
-    inv_transforms = T.Compose(
-        [
-            T.Normalize(mean=[0.0, 0.0, 0.0], std=[1 / 0.229, 1 / 0.224, 1 / 0.225]),
-            T.Normalize(mean=[-0.485, -0.456, -0.406], std=[1.0, 1.0, 1.0]),
-        ]
-    )
+from surg_seg.ImageTransforms.ImageTransforms import ImageTransforms
 
 
 @dataclass
@@ -76,93 +60,6 @@ class ImageDirParser(ABC):
 
     def __len__(self):
         return len(self.images_list)
-
-
-class Ambf5RecDataReader(ImageDirParser):
-    def __init__(self, root_dirs: List[Path], annotation_type: str):
-        """Image dataset
-
-        Parameters
-        ----------
-        root_dir : Path
-        annotation_type : str
-            Either [2colors, 4colors, or 5colors]
-        """
-        super().__init__(root_dirs)
-
-        if not isinstance(root_dirs, list):
-            root_dirs = [root_dirs]
-
-        self.image_folder_list = []
-
-        for root_dir in root_dirs:
-            single_folder = SingleFolderReader(root_dir, annotation_type)
-            self.image_folder_list.append(single_folder)
-            self.images_list += single_folder.images_path_list
-            self.labels_list += single_folder.label_path_list
-
-    def __len__(self):
-        return len(self.images_list)
-
-
-@dataclass
-class SingleFolderReader:
-    """
-    Read a single folder of data from the Ambf5Rec dataset
-    """
-
-    root_dir: Path
-    annotation_type: InitVar[str]
-    annotation_path: Path = field(init=False)
-    image_path_list: List[Path] = field(init=False)
-    label_path_list: List[Path] = field(init=False)
-    image_id_list: List[int] = field(init=False)
-    # Auxiliary variables used to identify duplicated ids in image folder
-    flag_list: List[int] = field(init=False)
-
-    def __post_init__(self, annotation_type):
-
-        self.annotation_dir = self.__get_annotation_dir(annotation_type)
-
-        self.images_path_list = natsort.natsorted(list((self.root_dir / "raw").glob("*.png")))
-        self.flag_list = np.zeros(len(self.images_path_list))
-        self.images_id_list = self.compute_id_list()
-
-        self.label_path_list = [self.annotation_dir / img.name for img in self.images_path_list]
-
-    def compute_id_list(self):
-        ids = []
-        img_name: Path
-        for img_name in self.images_path_list:
-            id_match = self.__extract_id(img_name.name)
-            self.__check_and_mark_id(id_match)
-            ids.append(id_match)
-        return ids
-
-    def __get_annotation_dir(self, annotation_type):
-        valid_options = ["2colors", "4colors", "5colors"]
-        if annotation_type not in valid_options:
-            raise RuntimeError(
-                f"{annotation_type} is not a valid annotation.\n Valid annotations are {valid_options}"
-            )
-        return self.root_dir / ("annotation" + annotation_type)
-
-    def __extract_id(self, img_name: str) -> int:
-        """Extract id from image name"""
-        id_match = re.findall("[0-9]{6}", img_name)
-
-        if len(id_match) == 0:
-            raise RuntimeError(f"Image {img_name} not formatted correctly")
-
-        id_match = int(id_match[0])
-        return id_match
-
-    def __check_and_mark_id(self, id_match):
-        """Check that there are no duplicated id"""
-        if self.flag_list[id_match]:
-            raise RuntimeError(f"Id {id_match} is duplicated")
-
-        self.flag_list[id_match] = 1
 
 
 def display_transformed_images(idx: int, ds: ImageSegmentationDataset):
