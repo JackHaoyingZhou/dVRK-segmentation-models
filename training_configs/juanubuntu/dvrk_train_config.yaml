@@ -16,8 +16,14 @@ ambf_train_config:
   learning_rate: $float("1e-3")
 
 test:
+  _requires_: "@create_test_dir"
   root: $Path('/home/juan1995/research_juan/accelnet_grant/dVRK-segmentation-models/assets/weights/')
   weights: $@test#root / 'myweights_realdvrk_d1_v0.0/myweights.pt'
+  predictions_dir: $@ambf_train_config#data_dir / 'predictions'
+
+create_test_dir:
+  - $print('creating test dir...')
+  - $@test#predictions_dir.mkdir(parents=True, exist_ok=True)
 
 check_paths:
   - $print("train_dir exists:", @ambf_train_config#train_dir_list[0].exists())

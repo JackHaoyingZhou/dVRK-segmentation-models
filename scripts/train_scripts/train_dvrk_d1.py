@@ -257,6 +257,9 @@ def calculate_metrics_on_valid(config: ConfigParser):
     valid_dir_list = config.get_parsed_content("ambf_train_config#val_dir_list")
     path2weights = config.get_parsed_content("test#weights")
 
+    predictions_dir: Path = config.get_parsed_content("test#predictions_dir")
+    predictions_dir.mkdir(exist_ok=True)
+
     train_data_reader = CustomImageDirParser(valid_dir_list)
     label_info_reader = YamlSegMapReader(mapping_file)
     label_parser = SegmentationLabelParser(label_info_reader)
@@ -282,6 +285,16 @@ def calculate_metrics_on_valid(config: ConfigParser):
         prediction = model_pipe.model(img).detach().cpu()
         onehot_prediction = ImageTransforms.predictions_trans(prediction)
         iou_stats.calculate_metrics_from_batch(onehot_prediction, label, img_paths)
+
+        # img = img.detach().cpu()[0]
+        # # img = ImageTransforms.inv_transforms(img).type(torch.uint8)[0].numpy()
+        # single_ch_prediction = onehot_prediction[0].argmax(dim=0, keepdim=True)
+        # blended = blend_images(img, single_ch_prediction, cmap="viridis", alpha=0.8).numpy()
+        # blended = (np.transpose(blended, (1, 2, 0)) * 254).astype(np.uint8)
+        # fig, ax = plt.subplots(1, 1)
+        # ax.imshow(blended)
+        # # ax.imshow(np.transpose(img, (1, 2, 0)))
+        # plt.show()
 
     iou_stats.calculate_aggregated_stats()
     table = AggregatedMetricTable(iou_stats)
