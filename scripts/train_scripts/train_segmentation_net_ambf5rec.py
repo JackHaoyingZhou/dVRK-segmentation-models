@@ -8,15 +8,21 @@ import numpy as np
 import torch
 from monai.bundle import ConfigParser
 from monai.data import ThreadDataLoader
-from surg_seg.Datasets.SegmentationLabelParser import LabelInfoReader, SegmentationLabelInfo, SegmentationLabelParser
+from surg_seg.Datasets.SegmentationLabelParser import (
+    LabelInfoReader,
+    SegmentationLabelInfo,
+    SegmentationLabelParser,
+)
 from surg_seg.Datasets.ImageDataset import ImageDirParser, ImageSegmentationDataset
 from surg_seg.Datasets.VideoDatasets import CombinedVidDataset
+from surg_seg.ImageTransforms.ImageTransforms import ImageTransforms
 from surg_seg.Networks.Models import create_FlexibleUnet
 from surg_seg.Trainers.Trainer import ModelTrainer
 
 ##################################################################
 # Concrete implementation of abstract classes
 ##################################################################
+
 
 class Ambf5RecSegMapReader(LabelInfoReader):
     """Read the mapping file for ambf multi-class segmentation."""
@@ -176,7 +182,7 @@ def train_with_video_dataset():
 def train_with_image_dataset():
     # Config parameters
     config = ConfigParser()
-    config.read_config("./training_configs/juanubuntu/ambf_train_config.yaml")
+    config.read_config("./training_configs/thin7/ambf_train_config.yaml")
     train_config = config.get_parsed_content("ambf_train_config")
 
     train_dir_list = train_config["train_dir_list"]
@@ -196,10 +202,14 @@ def train_with_image_dataset():
     label_info_reader = Ambf5RecSegMapReader(mapping_file, annotations_type)
     label_parser = SegmentationLabelParser(label_info_reader)
 
-    ds = ImageSegmentationDataset(label_parser, train_data_reader)
+    ds = ImageSegmentationDataset(
+        label_parser, train_data_reader, color_transforms=ImageTransforms.img_transforms
+    )
     dl = ThreadDataLoader(ds, batch_size=4, num_workers=0, shuffle=True)
 
-    val_ds = ImageSegmentationDataset(label_parser, valid_data_reader)
+    val_ds = ImageSegmentationDataset(
+        label_parser, valid_data_reader, color_transforms=ImageTransforms.img_transforms
+    )
     val_dl = ThreadDataLoader(val_ds, batch_size=4, num_workers=0, shuffle=True)
 
     print(f"Training dataset size: {len(ds)}")
