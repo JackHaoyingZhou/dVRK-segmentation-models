@@ -1,5 +1,5 @@
 from __future__ import annotations
-from random import random
+import random
 import torch
 import torchvision.transforms as T
 import monai.transforms as mt
