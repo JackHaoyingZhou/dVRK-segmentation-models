@@ -104,13 +104,13 @@ def train_with_image_dataset(config: ConfigParser):
     # Load model
     pretrained_weights_path = train_config["pretrained_weights_path"]
     model = create_FlexibleUnet(device, pretrained_weights_path, label_parser.mask_num)
-    optimizer = torch.optim.Adam(model.parameters(), learning_rate)
 
     # Load trainer
     training_output_path = train_config["training_output_path"]
     epochs = train_config["epochs"]
     learning_rate = train_config["learning_rate"]
 
+    optimizer = torch.optim.Adam(model.parameters(), learning_rate)
     trainer = ModelTrainer(device=device, max_epochs=epochs)
     model, training_stats = trainer.train_model(model, optimizer, dl, validation_dl=val_dl)
 
@@ -233,13 +233,13 @@ def calculate_metrics_on_valid(config: ConfigParser):
 def main():
     # Config parameters
     config = ConfigParser()
-    config.read_config("./training_configs/juanubuntu/dvrk_train_config.yaml")
+    config.read_config("./training_configs/thin7/dvrk_train_config.yaml")
 
-    show_images(config, show_valid=True)
+    # show_images(config, show_valid=True)
 
-    # train_with_image_dataset(config)
+    train_with_image_dataset(config)
 
-    show_inference_samples(config)
+    # show_inference_samples(config)
 
     # calculate_metrics_on_valid(config)
 
