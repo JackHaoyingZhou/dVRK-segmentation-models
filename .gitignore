@@ -9,3 +9,4 @@ assets
 temp/
 .idea/
 .DS_Store
+monai_data/
