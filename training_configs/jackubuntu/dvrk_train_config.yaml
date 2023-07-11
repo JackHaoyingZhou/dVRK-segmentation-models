@@ -12,13 +12,14 @@ ambf_train_config:
   training_output_path: $@workspace / 'assets/weights/real_dvrk_weights_d1'
   mapping_file: $@data_dir / "dataset_config.yaml"
   device: "cuda"
-  epochs: 5
-  learning_rate: $float("1e-3")
+  epochs: 200
+  learning_rate: $float("1e-4")
 
 test:
   _requires_: "@create_test_dir"
   root: $Path('/home/jackzhy/dVRK-segmentation-models/assets/weights')
-  weights: $@test#root / 'myweights_realdvrk_d1_v0.0/myweights.pt'
+  weights: $@test#root / 'real_dvrk_weights_d1/myweights.pt'
+  # weights: $@test#root / 'myweights_realdvrk_d1_v0.0/myweights.pt'
   predictions_dir: $@ambf_train_config#data_dir / 'predictions'
 
 create_test_dir:
