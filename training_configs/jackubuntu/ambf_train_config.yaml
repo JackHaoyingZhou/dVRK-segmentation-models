@@ -14,5 +14,5 @@ ambf_train_config:
   training_output_path: $@workspace / 'assets/weights/myweights_image'
   mapping_file: $@data_dir / "rec01" / "mapping.json"
   device: "cuda"
-  epochs: 200
-  learning_rate: $float("1e-3")
+  epochs: 500
+  learning_rate: $float("1e-5")

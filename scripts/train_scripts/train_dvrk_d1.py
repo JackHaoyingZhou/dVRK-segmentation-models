@@ -235,9 +235,9 @@ def main():
     config = ConfigParser()
     config.read_config("/home/jackzhy/dVRK-segmentation-models/training_configs/jackubuntu/dvrk_train_config.yaml")
 
-    show_images(config, show_valid=True)
+    # show_images(config, show_valid=True)
 
-    # train_with_image_dataset(config)
+    train_with_image_dataset(config)
 
     show_inference_samples(config)
 
