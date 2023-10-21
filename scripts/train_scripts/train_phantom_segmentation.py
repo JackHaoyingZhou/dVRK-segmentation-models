@@ -1,3 +1,5 @@
+from __future__ import annotations
+from dataclasses import dataclass
 from pathlib import Path
 from natsort import natsorted
 import numpy as np
@@ -22,97 +24,98 @@ from surg_seg.Metrics.MetricsUtils import AggregatedMetricTable, IOUStats
 from surg_seg.Networks.Models import FlexibleUnet1InferencePipe, create_FlexibleUnet
 from surg_seg.Trainers.Trainer import ModelTrainer
 
+from omegaconf import DictConfig, OmegaConf
+import hydra
+from hydra.core.config_store import ConfigStore
+from surg_seg.HydraConfig.SegConfig import SegmentationConfig
+
 ##################################################################
 # Concrete implementation of abstract classes
 ##################################################################
-class CustomImageDirParser(ImageDirParser):
+class BopImageDirParser(ImageDirParser):
     def __init__(self, root_dirs: List[Path]):
         super().__init__(root_dirs)
 
         self.parse_image_dir(root_dirs[0])
 
     def parse_image_dir(self, root_dir: Path):
-        self.images_list = natsorted(list((root_dir / "raw").glob("*.png")))
-        self.labels_list = natsorted(list((root_dir / "label").glob("*.png")))
+        self.images_list = natsorted(list(root_dir.glob("*/rgb/*.png")))
+        self.labels_list = natsorted(list(root_dir.glob("*/segmented/*.png")))
+
+
+@dataclass
+class DatasetContainer:
+    label_parser: SegmentationLabelParser
+    ds_train: ImageSegmentationDataset
+    dl_train: ThreadDataLoader
+    ds_test: ImageSegmentationDataset
+    dl_test: ThreadDataLoader
 
 
 ##################################################################
 # Auxiliary functions
 ##################################################################
 def create_label_parser(config: ConfigParser) -> SegmentationLabelParser:
-    train_config = config.get_parsed_content("ambf_train_config")
-    mapping_file = train_config["mapping_file"]
+    mapping_file = Path(config.path_config.mapping_file)
+    assert mapping_file.exists(), f"Mapping file {mapping_file} does not exist"
+
     label_info_reader = YamlSegMapReader(mapping_file)
     label_parser = SegmentationLabelParser(label_info_reader)
 
     return label_parser
 
 
-def create_train_dataset_and_dataloader(
-    config: ConfigParser, label_parser: SegmentationLabelParser, batch_size: int
+def create_dataset_and_dataloader(
+    config: ConfigParser, label_parser: SegmentationLabelParser, batch_size: int, split: str
 ) -> Tuple[ImageSegmentationDataset, ThreadDataLoader]:
+    assert split in ["train", "test"], "Split must be either train or test"
 
-    train_config = config.get_parsed_content("ambf_train_config")
-    train_dir_list = train_config["train_dir_list"]
-    train_data_reader = CustomImageDirParser(train_dir_list)
+    if split == "train":
+        data_dir = Path(config.path_config.train_data_path)
+    elif split == "test":
+        data_dir = Path(config.path_config.test_data_path)
 
-    ds = ImageSegmentationDataset(
-        label_parser,
-        train_data_reader,
-        color_transforms=ImageTransforms.img_transforms,
-        geometric_transforms=ImageTransforms.geometric_transforms,
-    )
+    data_reader = BopImageDirParser([data_dir])
+
+    if split == "train":
+        ds = ImageSegmentationDataset(
+            label_parser,
+            data_reader,
+            color_transforms=ImageTransforms.img_transforms,
+            geometric_transforms=ImageTransforms.geometric_transforms,
+        )
+    elif split == "test":
+        ds = ImageSegmentationDataset(
+            label_parser, data_reader, color_transforms=ImageTransforms.img_transforms
+        )
     dl = ThreadDataLoader(ds, batch_size=batch_size, num_workers=2, shuffle=True)
 
     return ds, dl
 
 
-def create_valid_dataset_and_dataloader(
-    config: ConfigParser, label_parser: SegmentationLabelParser, batch_size: int
-) -> Tuple[ImageSegmentationDataset, ThreadDataLoader]:
-    train_config = config.get_parsed_content("ambf_train_config")
-    valid_dir_list = train_config["val_dir_list"]
-
-    valid_data_reader = CustomImageDirParser(valid_dir_list)
-
-    val_ds = ImageSegmentationDataset(
-        label_parser, valid_data_reader, color_transforms=ImageTransforms.img_transforms
-    )
-    val_dl = ThreadDataLoader(val_ds, batch_size=batch_size, num_workers=2, shuffle=True)
-
-    return val_ds, val_dl
-
-
-##################################################################
-# Main functions
-##################################################################
-
-
-def train_with_image_dataset(config: ConfigParser):
-    train_config = config.get_parsed_content("ambf_train_config")
-    device = train_config["device"]
-
-    # Load data
-    label_parser = create_label_parser(config)
-    ds, dl = create_train_dataset_and_dataloader(config, label_parser, batch_size=8)
-    val_ds, val_dl = create_valid_dataset_and_dataloader(config, label_parser, batch_size=8)
-
-    print(f"Training dataset size: {len(ds)}")
-    print(f"Validation dataset size: {len(val_ds)}")
-    print(f"Number of output clases: {label_parser.mask_num}")
+def train_with_image_dataset(
+    config: SegmentationConfig,
+    data_container: DatasetContainer,
+):
+    device = config.train_config.device
 
     # Load model
-    pretrained_weights_path = train_config["pretrained_weights_path"]
-    model = create_FlexibleUnet(device, pretrained_weights_path, label_parser.mask_num)
+    pretrained_weights_path = config.train_config.pretrained_weights_path
+    model = create_FlexibleUnet(
+        device, pretrained_weights_path, data_container.label_parser.mask_num
+    )
 
     # Load trainer
-    training_output_path = train_config["training_output_path"]
-    epochs = train_config["epochs"]
-    learning_rate = train_config["learning_rate"]
+    training_output_path = Path(config.train_config.training_output_path)
+    epochs = config.train_config.epochs
+    learning_rate = config.train_config.learning_rate
 
     optimizer = torch.optim.Adam(model.parameters(), learning_rate)
+
     trainer = ModelTrainer(device=device, max_epochs=epochs)
-    model, training_stats = trainer.train_model(model, optimizer, dl, validation_dl=val_dl)
+    model, training_stats = trainer.train_model(
+        model, optimizer, data_container.dl_train, validation_dl=data_container.dl_test
+    )
 
     # Save model
     training_output_path.mkdir(exist_ok=True)
@@ -124,17 +127,7 @@ def train_with_image_dataset(config: ConfigParser):
     print(f"Last validation IOU {training_stats.validation_iou_list[-1]}")
 
 
-def show_images(config: ConfigParser, show_valid: str = False):
-    train_config = config.get_parsed_content("ambf_train_config")
-
-    label_parser = create_label_parser(config)
-    if show_valid:
-        print("Showing validation images")
-        ds, dl = create_valid_dataset_and_dataloader(config, label_parser, batch_size=1)
-    else:
-        print("Showing training images")
-        ds, dl = create_valid_dataset_and_dataloader(config, label_parser, batch_size=1)
-
+def show_images(dl: ThreadDataLoader, label_parser: SegmentationLabelParser) -> None:
     fig, axes = plt.subplots(3, 3, figsize=(8, 8))
     fig.set_tight_layout(True)
     fig.subplots_adjust(hspace=0, wspace=0)
@@ -154,19 +147,17 @@ def show_images(config: ConfigParser, show_valid: str = False):
     plt.show()
 
 
-def show_inference_samples(config: ConfigParser):
-    device = "cuda"
-    path2weights = config.get_parsed_content("test#weights")
-
-    label_parser = create_label_parser(config)
-    ds, dl = create_valid_dataset_and_dataloader(config, label_parser, batch_size=1)
+def show_inference_samples(config: SegmentationConfig, dataset_container: DatasetContainer):
+    path2weights = Path(config.path_config.trained_weights_path)
+    label_parser = dataset_container.label_parser
+    ds = dataset_container.ds_test
 
     model_pipe = FlexibleUnet1InferencePipe(
-        path2weights, device, out_channels=label_parser.mask_num
+        path2weights, config.test_config.device, out_channels=label_parser.mask_num
     )
     model_pipe.model.eval()
 
-    fig, axes = plt.subplots(1, 2, figsize=(8, 8))
+    fig, axes = plt.subplots(4, 4, figsize=(8, 8))
     fig.set_tight_layout(True)
     fig.subplots_adjust(hspace=0, wspace=0)
     for i, ax in enumerate(axes.flat):
@@ -192,12 +183,12 @@ def show_inference_samples(config: ConfigParser):
     plt.show()
 
 
-def calculate_metrics_on_valid(config: ConfigParser):
-    device = "cuda"
-    path2weights = config.get_parsed_content("test#weights")
+def calculate_metrics_on_valid(config: SegmentationConfig, data_container: DatasetContainer):
+    device = config.test_config.device
+    path2weights = Path(config.path_config.trained_weights_path)
 
-    label_parser = create_label_parser(config)
-    ds, dl = create_valid_dataset_and_dataloader(config, label_parser, batch_size=1)
+    label_parser = data_container.label_parser
+    dl = data_container.dl_test
 
     model_pipe = FlexibleUnet1InferencePipe(
         path2weights, device, out_channels=label_parser.mask_num
@@ -219,6 +210,7 @@ def calculate_metrics_on_valid(config: ConfigParser):
         single_ch_prediction = onehot_prediction[0].argmax(dim=0, keepdim=True)
         blended = blend_images(img, single_ch_prediction, cmap="viridis", alpha=0.8).numpy()
         blended = (np.transpose(blended, (1, 2, 0)) * 254).astype(np.uint8)
+
         fig, ax = plt.subplots(1, 1)
         ax.imshow(blended)
         # ax.imshow(np.transpose(img, (1, 2, 0)))
@@ -228,6 +220,7 @@ def calculate_metrics_on_valid(config: ConfigParser):
         else:
             print("no needle")
         plt.show()
+        print("hello")
 
     iou_stats.calculate_aggregated_stats()
     table = AggregatedMetricTable(iou_stats)
@@ -235,18 +228,45 @@ def calculate_metrics_on_valid(config: ConfigParser):
     table.print_table()
 
 
-def main():
-    # Config parameters
-    config = ConfigParser()
-    config.read_config("./training_configs/juanubuntu/dvrk_train_config.yaml")
+def load_dataset(cfg: SegmentationConfig) -> DatasetContainer:
+    label_parser = create_label_parser(cfg)
+    ds_train, dl_train = create_dataset_and_dataloader(
+        cfg, label_parser, batch_size=cfg.train_config.batch_size, split="train"
+    )
+    ds_test, dl_test = create_dataset_and_dataloader(
+        cfg, label_parser, batch_size=cfg.test_config.batch_size, split="test"
+    )
 
-    # show_images(config, show_valid=True)
+    print(f"Training dataset size: {len(ds_train)}")
+    print(f"Validation dataset size: {len(ds_test)}")
+    print(f"Number of output clases: {label_parser.mask_num}")
 
-    train_with_image_dataset(config)
+    dataset_container = DatasetContainer(label_parser, ds_train, dl_train, ds_test, dl_test)
+    return dataset_container
 
-    show_inference_samples(config)
 
-    calculate_metrics_on_valid(config)
+##################################################################
+# Main functions
+##################################################################
+
+cs = ConfigStore.instance()
+cs.store(name="base_config", node=SegmentationConfig)
+
+
+@hydra.main(version_base=None, config_path="../../config/phantom_seg", config_name="config")
+def main(cfg: SegmentationConfig):
+    print(OmegaConf.to_yaml(cfg))
+
+    dataset_container = load_dataset(cfg)
+
+    if cfg.actions.show_images:
+        show_images(dataset_container.dl_train, dataset_container.label_parser)
+    if cfg.actions.train:
+        train_with_image_dataset(cfg, dataset_container)
+    if cfg.actions.show_inferences:
+        show_inference_samples(cfg, dataset_container)
+    if cfg.actions.calculate_metrics:
+        calculate_metrics_on_valid(cfg, dataset_container)
 
 
 if __name__ == "__main__":

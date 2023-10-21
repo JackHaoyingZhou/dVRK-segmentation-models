@@ -121,6 +121,19 @@ class LabelInfoReader(ABC):
         self.mapping_file: Path = mapping_file
         self.classes_info: List[SegmentationLabelInfo] = []
 
+    def is_class_info_available(self, class_name: str):
+        for e in self.classes_info:
+            if e.name == class_name:
+                return True
+        return False
+
+    def get_class_info(self, class_name: str) -> SegmentationLabelInfo:
+        for e in self.classes_info:
+            if e.name == class_name:
+                return e
+
+        raise RuntimeError(f"Class {class_name} not found in mapping file")
+
     @abstractmethod
     def read(self):
         """Read file and construct the classes_info list."""
