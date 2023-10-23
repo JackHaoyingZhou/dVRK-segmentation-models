@@ -18,7 +18,8 @@ class PathConfig:
     pretrained_weights_path: Path
     trained_weights_path: Path
     training_output_path: Path
-    mapping_file: Path
+    mapping_file_name: str
+    mapping_file_path: Path
     weights_file: Path
     predictions_path: Path
 
@@ -47,5 +48,6 @@ class TestConfig:
 class ActionsConfig:
     show_images: bool
     train: bool
+    test: bool
     show_inferences: bool
     calculate_metrics: bool

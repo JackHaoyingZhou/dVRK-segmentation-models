@@ -30,7 +30,8 @@ test_config:
   predictions_dir: "${..path_config.predictions_path}"
 
 actions:
-  show_images: false
+  show_images: true
   train: false
-  show_inferences: false
+  test: false
+  show_inferences: true
   calculate_metrics: true

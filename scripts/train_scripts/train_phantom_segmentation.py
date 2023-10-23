@@ -10,6 +10,7 @@ from monai.visualize.utils import blend_images
 import torch
 from monai.bundle import ConfigParser
 from monai.data import ThreadDataLoader
+from monai.networks.nets import FlexibleUNet
 
 from surg_seg.Datasets.SegmentationLabelParser import (
     SegmentationLabelParser,
@@ -55,8 +56,8 @@ class DatasetContainer:
 ##################################################################
 # Auxiliary functions
 ##################################################################
-def create_label_parser(config: ConfigParser) -> SegmentationLabelParser:
-    mapping_file = Path(config.path_config.mapping_file)
+def create_label_parser(config: SegmentationConfig) -> SegmentationLabelParser:
+    mapping_file = Path(config.path_config.mapping_file_path)
     assert mapping_file.exists(), f"Mapping file {mapping_file} does not exist"
 
     label_info_reader = YamlSegMapReader(mapping_file)
@@ -94,16 +95,9 @@ def create_dataset_and_dataloader(
 
 
 def train_with_image_dataset(
-    config: SegmentationConfig,
-    data_container: DatasetContainer,
+    config: SegmentationConfig, data_container: DatasetContainer, model: FlexibleUNet
 ):
     device = config.train_config.device
-
-    # Load model
-    pretrained_weights_path = config.train_config.pretrained_weights_path
-    model = create_FlexibleUnet(
-        device, pretrained_weights_path, data_container.label_parser.mask_num
-    )
 
     # Load trainer
     training_output_path = Path(config.train_config.training_output_path)
@@ -126,6 +120,8 @@ def train_with_image_dataset(
     print(f"Last train IOU {training_stats.iou_list[-1]}")
     print(f"Last validation IOU {training_stats.validation_iou_list[-1]}")
 
+    return model
+
 
 def show_images(dl: ThreadDataLoader, label_parser: SegmentationLabelParser) -> None:
     fig, axes = plt.subplots(3, 3, figsize=(8, 8))
@@ -147,15 +143,11 @@ def show_images(dl: ThreadDataLoader, label_parser: SegmentationLabelParser) -> 
     plt.show()
 
 
-def show_inference_samples(config: SegmentationConfig, dataset_container: DatasetContainer):
-    path2weights = Path(config.path_config.trained_weights_path)
-    label_parser = dataset_container.label_parser
+def show_inference_samples(
+    dataset_container: DatasetContainer,
+    model_pipe: FlexibleUnet1InferencePipe,
+):
     ds = dataset_container.ds_test
-
-    model_pipe = FlexibleUnet1InferencePipe(
-        path2weights, config.test_config.device, out_channels=label_parser.mask_num
-    )
-    model_pipe.model.eval()
 
     fig, axes = plt.subplots(4, 4, figsize=(8, 8))
     fig.set_tight_layout(True)
@@ -183,17 +175,15 @@ def show_inference_samples(config: SegmentationConfig, dataset_container: Datase
     plt.show()
 
 
-def calculate_metrics_on_valid(config: SegmentationConfig, data_container: DatasetContainer):
+def calculate_metrics_on_valid(
+    config: SegmentationConfig,
+    data_container: DatasetContainer,
+    model_pipe: FlexibleUnet1InferencePipe,
+):
     device = config.test_config.device
-    path2weights = Path(config.path_config.trained_weights_path)
 
     label_parser = data_container.label_parser
     dl = data_container.dl_test
-
-    model_pipe = FlexibleUnet1InferencePipe(
-        path2weights, device, out_channels=label_parser.mask_num
-    )
-    model_pipe.model.eval()
 
     iou_stats = IOUStats(label_parser)
     for batch in tqdm(dl, desc="Calculating metrics"):
@@ -245,6 +235,34 @@ def load_dataset(cfg: SegmentationConfig) -> DatasetContainer:
     return dataset_container
 
 
+def create_model(cfg: SegmentationConfig, dataset_container: DatasetContainer) -> FlexibleUNet:
+    pretrained_weights_path = cfg.train_config.pretrained_weights_path
+    model = create_FlexibleUnet(
+        cfg.train_config.device, pretrained_weights_path, dataset_container.label_parser.mask_num
+    )
+    return model
+
+
+def test_model(
+    config: SegmentationConfig, dataset_container: DatasetContainer, model: FlexibleUNet
+):
+    path2weights = Path(config.path_config.trained_weights_path)
+    label_parser = dataset_container.label_parser
+    ds = dataset_container.ds_test
+
+    model_pipe = FlexibleUnet1InferencePipe(
+        path2weights, config.test_config.device, out_channels=label_parser.mask_num, model=model
+    )
+    model_pipe.model.eval()
+    model_pipe.upload_weights()
+
+    if config.actions.show_inferences:
+        show_inference_samples(dataset_container, model_pipe)
+
+    if config.actions.calculate_metrics:
+        calculate_metrics_on_valid(config, dataset_container, model_pipe)
+
+
 ##################################################################
 # Main functions
 ##################################################################
@@ -258,15 +276,16 @@ def main(cfg: SegmentationConfig):
     print(OmegaConf.to_yaml(cfg))
 
     dataset_container = load_dataset(cfg)
+    model = create_model(cfg, dataset_container)
 
     if cfg.actions.show_images:
         show_images(dataset_container.dl_train, dataset_container.label_parser)
+
     if cfg.actions.train:
-        train_with_image_dataset(cfg, dataset_container)
-    if cfg.actions.show_inferences:
-        show_inference_samples(cfg, dataset_container)
-    if cfg.actions.calculate_metrics:
-        calculate_metrics_on_valid(cfg, dataset_container)
+        model = train_with_image_dataset(cfg, dataset_container)
+
+    if cfg.actions.test:
+        test_model(cfg, dataset_container, model)
 
 
 if __name__ == "__main__":
