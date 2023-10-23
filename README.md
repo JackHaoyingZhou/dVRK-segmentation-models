@@ -1,26 +1,14 @@
 # Surgical segmentation models
 
-## Dependencies
+Utility library for semantic segmentation of surgical instruments. To install the package, follow the installation instructions [here](./docs/installation.md). Additional notes about who to use the deep learning models can be found in the [model notes](./docs/model_notes.md) page. Documentation of scripts can be found [here](./docs/script_descriptions.md).
 
-```bash
-sudo apt install ffmpeg
-```
-## Installation of anaconda environment
+# Notes
+* Monai blend function works with normalized and unnoralized images.
+* Model produces logits. Last layer of Flexible Unet is a conv layer.
+* Number of classes is automatically extracted from Labels config file.
+* Does training depends on using a sigmoid or softmax activation function?
+* Prediction transformations are probably not correct right now. Threshold should not be applied to logits.
 
-```bash
-conda create -n surg_env python=3.9 numpy ipython  -y && conda activate surg_env
-```
-## Installation of `surg_seg` package
-
-`Surg_seg` is a python package that includes most of the code to interface with the trained models
-
-```bash
-pip install -e . -r requirements.txt --user
-```
-
-## Erase Anaconda virtual environment
-
-```bash
-conda remove --name surg_env --all
-conda info --envs
-```
+## TODO
+* [ ] Combine multiple colors into a single class in LabelParse config file. 
+* [ ] Output inferences in a directory.
