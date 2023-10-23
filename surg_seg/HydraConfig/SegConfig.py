@@ -16,7 +16,8 @@ class PathConfig:
     workspace: Path
     data_dir: Path
     pretrained_weights_path: Path
-    trained_weights_path: Path
+    trained_weights_file_name: str
+    trained_weights_file_path: Path
     training_output_path: Path
     mapping_file_name: str
     mapping_file_path: Path

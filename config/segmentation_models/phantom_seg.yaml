@@ -2,6 +2,10 @@ defaults:
   - path_config: juanubuntu
   - _self_
 
+hydra:
+  run:
+    dir: ./outputs/${hydra.job.config_name}/logs/${now:%Y%m%d}_${now:%H%M%S}
+
 global_device: "cuda"
 
 path_config:
@@ -16,7 +20,7 @@ path_config:
 train_config:
   device: "${..global_device}"
   epochs: 2
-  batch_size: 8
+  batch_size: 4
   num_workers: 4
   learning_rate: 1e-3
   pretrained_weights_path: "${..path_config.pretrained_weights_path}"
@@ -26,12 +30,12 @@ test_config:
   device: "${..global_device}"
   batch_size: 1
   num_workers: ${..train_config.num_workers}
-  weights_file: "${..path_config.weights_file}"
+  weights_file: ${..path_config.trained_weights_file_path}/${..path_config.trained_weights_file_name}
   predictions_dir: "${..path_config.predictions_path}"
 
 actions:
-  show_images: true
+  show_images: false
   train: false
-  test: false
+  test: true
   show_inferences: true
   calculate_metrics: true

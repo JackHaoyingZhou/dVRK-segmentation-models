@@ -52,8 +52,11 @@ def test_model(config: SegmentationConfig, dataset_container: DatasetContainer, 
     fig, axes = plt.subplots(1, 2, figsize=(8, 8))
     fig.set_tight_layout(True)
     fig.subplots_adjust(hspace=0, wspace=0)
+
+    pair = next(iter(dataset_container.dl_test))
+    print(f"batched tensor shape: {pair['image'].shape}")
+
     for i, ax in enumerate(axes.flat):
-        # pair = next(iter(dl))
         pair = ds.__getitem__(i, transform=False)
         im = pair["image"]
         lb = pair["label"]

@@ -49,7 +49,7 @@ class ImageSegmentationDataset(Dataset):
             if self.geometric_transforms is not None:
                 image, annotation = self.geometric_transforms(image, annotation)
 
-        return {"image": image, "label": annotation}
+        return {"image": image, "label": annotation}#, "path": self.images_list[idx]}
 
 
 class ImageDirParser(ABC):

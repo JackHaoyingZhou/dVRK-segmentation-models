@@ -100,7 +100,7 @@ def train_with_image_dataset(
     device = config.train_config.device
 
     # Load trainer
-    training_output_path = Path(config.train_config.training_output_path)
+    training_output_path = Path(config.path_config.trained_weights_file_path)
     epochs = config.train_config.epochs
     learning_rate = config.train_config.learning_rate
 
@@ -113,7 +113,9 @@ def train_with_image_dataset(
 
     # Save model
     training_output_path.mkdir(exist_ok=True)
-    torch.save(model.state_dict(), training_output_path / "myweights.pt")
+    torch.save(
+        model.state_dict(), training_output_path / config.path_config.trained_weights_file_name
+    )
     training_stats.to_pickle(training_output_path)
     training_stats.plot_stats(file_path=training_output_path)
 
@@ -246,7 +248,9 @@ def create_model(cfg: SegmentationConfig, dataset_container: DatasetContainer) -
 def test_model(
     config: SegmentationConfig, dataset_container: DatasetContainer, model: FlexibleUNet
 ):
-    path2weights = Path(config.path_config.trained_weights_path)
+    path2weights = Path(config.path_config.trained_weights_file_path)
+    path2weights /= config.path_config.trained_weights_file_name
+
     label_parser = dataset_container.label_parser
     ds = dataset_container.ds_test
 
@@ -271,7 +275,11 @@ cs = ConfigStore.instance()
 cs.store(name="base_config", node=SegmentationConfig)
 
 
-@hydra.main(version_base=None, config_path="../../config/phantom_seg", config_name="config")
+@hydra.main(
+    version_base=None,
+    config_path="../../config/segmentation_models",
+    config_name="phantom_seg",
+)
 def main(cfg: SegmentationConfig):
     print(OmegaConf.to_yaml(cfg))
 
@@ -282,10 +290,14 @@ def main(cfg: SegmentationConfig):
         show_images(dataset_container.dl_train, dataset_container.label_parser)
 
     if cfg.actions.train:
-        model = train_with_image_dataset(cfg, dataset_container)
+        model = train_with_image_dataset(cfg, dataset_container, model)
 
     if cfg.actions.test:
         test_model(cfg, dataset_container, model)
+
+    from hydra.core.hydra_config import HydraConfig
+
+    print(HydraConfig.get().job.config_name)
 
 
 if __name__ == "__main__":
