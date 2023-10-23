@@ -173,7 +173,6 @@ def save_test_predictions(
 
         blended = blend_images(input_tensor, inferred_single_ch, cmap="viridis", alpha=0.8).numpy()
         blended = (np.transpose(blended, (1, 2, 0)) * 254).astype(np.uint8)
-        print(blended.shape)
         Image.fromarray(blended).save(predictions_dir / pred_name)
 
         # im = ImageTransforms.inv_transforms(im)
@@ -270,7 +269,7 @@ def test_model(
     model_pipe.model.eval()
     model_pipe.upload_weights()
 
-    if config.actions.show_inferences:
+    if config.actions.save_test_predictions:
         save_test_predictions(config, dataset_container, model_pipe)
 
     if config.actions.calculate_metrics:
@@ -287,8 +286,8 @@ cs.store(name="base_config", node=SegmentationConfig)
 
 @hydra.main(
     version_base=None,
-    config_path="../../config/segmentation_models",
-    config_name="phantom_seg",
+    config_path="../../config/phantom_instrument_seg/",
+    config_name="phantom_instrument_seg",
 )
 def main(cfg: SegmentationConfig):
     print(OmegaConf.to_yaml(cfg))
