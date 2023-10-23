@@ -11,6 +11,7 @@ import torch
 from monai.bundle import ConfigParser
 from monai.data import ThreadDataLoader
 from monai.networks.nets import FlexibleUNet
+from PIL import Image
 
 from surg_seg.Datasets.SegmentationLabelParser import (
     SegmentationLabelParser,
@@ -145,36 +146,45 @@ def show_images(dl: ThreadDataLoader, label_parser: SegmentationLabelParser) -> 
     plt.show()
 
 
-def show_inference_samples(
+def save_test_predictions(
+    config: SegmentationConfig,
     dataset_container: DatasetContainer,
     model_pipe: FlexibleUnet1InferencePipe,
 ):
+    predictions_dir = Path(config.path_config.predictions_path).resolve()
+    predictions_dir.mkdir(exist_ok=True)
     ds = dataset_container.ds_test
 
-    fig, axes = plt.subplots(4, 4, figsize=(8, 8))
-    fig.set_tight_layout(True)
-    fig.subplots_adjust(hspace=0, wspace=0)
-    for i, ax in enumerate(axes.flat):
-        # pair = next(iter(dl))
-        pair = ds.__getitem__(i, transform=False)
-        im = pair["image"]
-        lb = pair["label"]
-        print(im.shape)
-        input_tensor, inferred_single_ch = model_pipe.infer(im)
+    # fig, axes = plt.subplots(4, 4, figsize=(8, 8))
+    # fig.set_tight_layout(True)
+    # fig.subplots_adjust(hspace=0, wspace=0)
+    # # for i, ax in enumerate(axes.flat):
 
+    for i in range(len(ds)):
+        # pair = next(iter(dl))
+        pair = ds.get_sample(i, transform=False)
+        im = pair["image"]
+        im_path = Path(pair["path"])
+        pred_name = im_path.parent.parent.name + "_" + im_path.stem + "_pred.png"
+
+        input_tensor, inferred_single_ch = model_pipe.infer(im)
         inferred_single_ch = inferred_single_ch.detach().cpu()
         input_tensor = input_tensor.detach().cpu()[0]
+
         blended = blend_images(input_tensor, inferred_single_ch, cmap="viridis", alpha=0.8).numpy()
         blended = (np.transpose(blended, (1, 2, 0)) * 254).astype(np.uint8)
+        print(blended.shape)
+        Image.fromarray(blended).save(predictions_dir / pred_name)
 
         # im = ImageTransforms.inv_transforms(im)
         # lb = label_parser.convert_onehot_to_single_ch(lb)
         # blended = blend_images(im, lb, cmap="viridis", alpha=0.7)
         # blended = blended.numpy().transpose(1, 2, 0)
         # blended = (blended * 255).astype(np.uint8)
-        ax.imshow(blended)
-        ax.axis("off")
-    plt.show()
+
+        # ax.imshow(blended)
+        # ax.axis("off")
+    # plt.show()
 
 
 def calculate_metrics_on_valid(
@@ -261,7 +271,7 @@ def test_model(
     model_pipe.upload_weights()
 
     if config.actions.show_inferences:
-        show_inference_samples(dataset_container, model_pipe)
+        save_test_predictions(config, dataset_container, model_pipe)
 
     if config.actions.calculate_metrics:
         calculate_metrics_on_valid(config, dataset_container, model_pipe)

@@ -50,5 +50,5 @@ class ActionsConfig:
     show_images: bool
     train: bool
     test: bool
-    show_inferences: bool
+    save_test_predictions: bool
     calculate_metrics: bool

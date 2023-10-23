@@ -37,5 +37,5 @@ actions:
   show_images: false
   train: false
   test: true
-  show_inferences: true
+  save_test_predictions: false
   calculate_metrics: true
