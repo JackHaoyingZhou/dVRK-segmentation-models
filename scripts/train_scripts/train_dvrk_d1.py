@@ -243,11 +243,11 @@ def main():
 
     # show_images(config, show_valid=True)
 
-    # train_with_image_dataset(config)
+    train_with_image_dataset(config)
 
-    show_inference_samples(config)
+    # show_inference_samples(config)
 
-    calculate_metrics_on_valid(config)
+    # calculate_metrics_on_valid(config)
 
 
 if __name__ == "__main__":

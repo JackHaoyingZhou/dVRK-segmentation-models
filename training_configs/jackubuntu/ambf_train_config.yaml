@@ -1,18 +1,18 @@
 imports:
   - $from pathlib import Path
 
-workspace: $Path('/home/jackzhy/dVRK-segmentation-models')
-data_dir: $Path('/home/jackzhy/dVRK-segmentation-models/monai_data/Phantom2_AMBF/Phantom2_AMBF/phantom2_data_processed')
+workspace: $Path('/home/jackzhy/IROS_2024/dVRK-segmentation-models')
+data_dir: $Path('/home/jackzhy/IROS_2024/dVRK-segmentation-models/monai_data/AMBF_DATASETS/')
 annotations_type: "5colors"
 
 ambf_train_config:
   annotations_type: $@annotations_type
   data_dir: $@data_dir
-  train_dir_list: $[@data_dir / "rec01", @data_dir / "rec03", @data_dir / "rec05"]
-  val_dir_list: $[@data_dir / "rec02", @data_dir / "rec04"]
+  train_dir_list: $[@data_dir / "000001", @data_dir / "000003", @data_dir / "000004", @data_dir / "000005"]
+  val_dir_list: $[@data_dir / "000002"]
   pretrained_weights_path: $@workspace / 'assets/weights/pretrained-weights'
-  training_output_path: $@workspace / 'assets/weights/myweights_image'
-  mapping_file: $@data_dir / "rec01" / "mapping.json"
+  training_output_path: $@workspace / 'assets/weights/myweights_jack_0306'
+  mapping_file: $@data_dir / "mapping.json"
   device: "cuda"
   epochs: 500
   learning_rate: $float("1e-5")
