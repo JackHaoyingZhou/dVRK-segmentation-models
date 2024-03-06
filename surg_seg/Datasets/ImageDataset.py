@@ -35,6 +35,11 @@ class ImageSegmentationDataset(Dataset):
         return len(self.images_list)
 
     def __getitem__(self, idx, transform: bool = True):
+        sample_dict = self.get_sample(idx, transform)
+
+        return {"image": sample_dict["image"], "label": sample_dict["label"]}
+
+    def get_sample(self, idx: int, transform: bool = True):
         if isinstance(idx, slice):
             RuntimeError("Slices are not supported")
 
@@ -49,7 +54,7 @@ class ImageSegmentationDataset(Dataset):
             if self.geometric_transforms is not None:
                 image, annotation = self.geometric_transforms(image, annotation)
 
-        return {"image": image, "label": annotation}
+        return {"image": image, "label": annotation, "path": self.images_list[idx]}
 
 
 class ImageDirParser(ABC):

@@ -46,17 +46,19 @@ class FlexibleUnet1InferencePipe(AbstractInferencePipe):
     path_to_weights: Path
     device: str
     out_channels: int = 1
+    model: FlexibleUNet = None
 
     def __post_init__(self):
-        self.model = FlexibleUNet(
-            in_channels=3,
-            out_channels=self.out_channels,
-            backbone="efficientnet-b0",
-            pretrained=True,
-            is_pad=False,
-        ).to(self.device)
+        if self.model is None:
+            self.model = FlexibleUNet(
+                in_channels=3,
+                out_channels=self.out_channels,
+                backbone="efficientnet-b0",
+                pretrained=True,
+                is_pad=False,
+            ).to(self.device)
 
-        self.upload_weights()
+            self.upload_weights()
 
     def infer_from_monai_tensor(self, im: MetaTensor):
         """
@@ -86,6 +88,7 @@ class FlexibleUnet1InferencePipe(AbstractInferencePipe):
         input_tensor = ImageTransforms.img_transforms(im).to(self.device)
         input_tensor = torch.unsqueeze(input_tensor, 0)  # Add batch dimension. 4D input_tensor
         inferred = self.model(input_tensor)
+        inferred = ImageTransforms.predictions_transforms(inferred)
         inferred = inferred[0]  # go back to 3D tensor
         inferred_single_ch = inferred.argmax(dim=0, keepdim=True)  # Get a single channel image
 

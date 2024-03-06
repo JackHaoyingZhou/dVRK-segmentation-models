@@ -214,15 +214,20 @@ def calculate_metrics_on_valid(config: ConfigParser):
         onehot_prediction = ImageTransforms.predictions_transforms(prediction)
         iou_stats.calculate_metrics_from_batch(onehot_prediction, label, img_paths)
 
-        # img = img.detach().cpu()[0]
-        # # img = ImageTransforms.inv_transforms(img).type(torch.uint8)[0].numpy()
-        # single_ch_prediction = onehot_prediction[0].argmax(dim=0, keepdim=True)
-        # blended = blend_images(img, single_ch_prediction, cmap="viridis", alpha=0.8).numpy()
-        # blended = (np.transpose(blended, (1, 2, 0)) * 254).astype(np.uint8)
-        # fig, ax = plt.subplots(1, 1)
-        # ax.imshow(blended)
-        # # ax.imshow(np.transpose(img, (1, 2, 0)))
-        # plt.show()
+        img = img.detach().cpu()[0]
+        # img = ImageTransforms.inv_transforms(img).type(torch.uint8)[0].numpy()
+        single_ch_prediction = onehot_prediction[0].argmax(dim=0, keepdim=True)
+        blended = blend_images(img, single_ch_prediction, cmap="viridis", alpha=0.8).numpy()
+        blended = (np.transpose(blended, (1, 2, 0)) * 254).astype(np.uint8)
+        fig, ax = plt.subplots(1, 1)
+        ax.imshow(blended)
+        # ax.imshow(np.transpose(img, (1, 2, 0)))
+        x, y = np.where(single_ch_prediction[0].numpy() == 1)
+        if len(x) == 0:
+            print(f"{x[0]}, {y[0]}, len: {len(x)}")
+        else:
+            print("no needle")
+        plt.show()
 
     iou_stats.calculate_aggregated_stats()
     table = AggregatedMetricTable(iou_stats)
@@ -233,6 +238,7 @@ def calculate_metrics_on_valid(config: ConfigParser):
 def main():
     # Config parameters
     config = ConfigParser()
+    config.read_config("./training_configs/juanubuntu/dvrk_train_config.yaml")
     config.read_config("/home/jackzhy/dVRK-segmentation-models/training_configs/jackubuntu/dvrk_train_config.yaml")
 
     # show_images(config, show_valid=True)
