@@ -1,6 +1,6 @@
 # Surgical segmentation models
 
-Utility library for semantic segmentation of surgical instruments. To install the package, follow the installation instructions [here](./docs/installation.md). Additional notes about who to use the deep learning models can be found in the [model notes](./docs/model_notes.md) page. Documentation of scripts can be found [here](./docs/script_descriptions.md).
+Utility library for semantic segmentation of surgical instruments. To install the package, follow the installation instructions [here](./docs/installation.md). Additional notes about how to use the deep learning models can be found in the [model notes](./docs/model_notes.md) page. Documentation of scripts can be found [here](./docs/script_descriptions.md).
 
 # Notes
 * Monai blend function works with normalized and unnoralized images.
