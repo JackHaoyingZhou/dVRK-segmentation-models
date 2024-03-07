@@ -35,7 +35,7 @@ test_config:
 
 actions:
   show_images: true
-  train: false
-  test: false
-  save_test_predictions: false
+  train: true
+  test: true
+  save_test_predictions: true
   calculate_metrics: false
