@@ -97,6 +97,10 @@ class LabelMeJsonParser:
             self.label_name_to_value[label_info.name] = label_info.id
 
     def create_labels(self) -> Tuple[np.ndarray, np.ndarray, List[str]]:
+        """
+        The labels in the `shapes` list need to match the keys in the `label_name_to_value` dict
+        """
+
         lbl, _ = utils.shapes_to_label(
             self.img.shape, self.data["shapes"], self.label_name_to_value
         )
@@ -246,9 +250,10 @@ def parse_folder(indir: Path, outdir: Path, labels_yaml_path: Path):
     "--labels_yaml_path",
     type=Path,
     default=None,
-    help="Path to yaml file with class names and ids",
+    help="Path to yaml file with class names and ids. If specified labels in yaml file need"
+    "to math labels in json file.",
 )
-def parse_single_file(json_file: Path, outdir: Path, labels_yaml_path: Path):
+def parse_file(json_file: Path, outdir: Path, labels_yaml_path: Path):
     """Parse a single labelme json file and extract raw image and label"""
 
     folder_name = json_file.with_suffix("").name
@@ -269,6 +274,6 @@ def parse_single_file(json_file: Path, outdir: Path, labels_yaml_path: Path):
 
 if __name__ == "__main__":
     mycommands.add_command(parse_folder)
-    mycommands.add_command(parse_single_file)
+    mycommands.add_command(parse_file)
 
     mycommands()
