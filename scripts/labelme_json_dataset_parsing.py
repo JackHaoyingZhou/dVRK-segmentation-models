@@ -152,14 +152,15 @@ class LabelMeImageSaver(ABC):
 class MultiDirSaver(LabelMeImageSaver):
     """Save raw images and labels in different folders."""
 
-    def __init__(self, label_parser, root_path, file_prefix: str):
+    def __init__(self, label_parser, root_path, file_prefix: int):
         super().__init__(label_parser, root_path)
 
         self.file_prefix = file_prefix
-        self.raw_dir = self.root_path / "raw"
-        self.labels_dir = self.root_path / "labels"
-        self.blended_dir = self.root_path / "blended"
+        self.raw_dir = self.root_path / "rgb"
+        self.labels_dir = self.root_path / "segmented"
+        self.blended_dir = self.root_path / "gt_vis"
 
+        self.root_path.mkdir(exist_ok=True, parents=True)
         self.raw_dir.mkdir(exist_ok=True)
         self.labels_dir.mkdir(exist_ok=True)
         self.blended_dir.mkdir(exist_ok=True)
@@ -167,15 +168,12 @@ class MultiDirSaver(LabelMeImageSaver):
     def save_image_and_label(
         self, img: np.ndarray, lbl: np.ndarray, lbl_viz: np.ndarray
     ):
-        PIL.Image.fromarray(img).save(self.raw_dir / (self.file_prefix + "_img.png"))
-        # utils.lblsave(self.labels_dir / (self.file_prefix + "_label.png"), lbl)
+        name = f"{self.file_prefix:06d}.png"
+        PIL.Image.fromarray(img).save(self.raw_dir / (name))
+
         rgb_lbl = self.label_parser.convert_single_ch_to_rgb(lbl)
-        PIL.Image.fromarray(rgb_lbl).save(
-            self.labels_dir / (self.file_prefix + "_label.png")
-        )
-        PIL.Image.fromarray(lbl_viz).save(
-            self.blended_dir / (self.file_prefix + "_label_viz.png")
-        )
+        PIL.Image.fromarray(rgb_lbl).save(self.labels_dir / (name))
+        PIL.Image.fromarray(lbl_viz).save(self.blended_dir / (name))
 
 
 class SingleDirSaver(LabelMeImageSaver):
@@ -217,7 +215,7 @@ def mycommands():
     help="Path to yaml file with class names and ids",
     required=True,
 )
-def parse_folder(indir: Path,outdir:Path, labels_yaml_path: Path):
+def parse_folder(indir: Path, outdir: Path, labels_yaml_path: Path):
 
     if not indir.exists():
         raise Exception(
@@ -235,6 +233,7 @@ def parse_folder(indir: Path,outdir:Path, labels_yaml_path: Path):
 
     for json_file in tqdm(json_files):
         file_prefix = json_file.with_suffix("").name
+        file_prefix = int(file_prefix.replace("image_", ""))
         labelme_saver = MultiDirSaver(labels_parser, outdir, file_prefix)
         labelme_json = LabelMeJsonParser(json_file, labelme_saver, labels_parser)
         labelme_json.save()
