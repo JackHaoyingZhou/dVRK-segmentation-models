@@ -33,7 +33,11 @@ def color_to_binary(src_path: str, dest_folder: str, new_name: str) -> None:
     lower_bound = np.array([0, 80, 0])
     upper_bound = np.array([0, 255, 0])
     binary_segment = cv2.inRange(color_segment, lower_bound, upper_bound)
-    cv2.imwrite(new_path, binary_segment)
+    green_mask = np.zeros_like(color_segment, dtype=np.uint8)
+    green_mask[binary_segment == 255] = [0, 255, 0]
+    # print('test')
+    # cv2.imwrite(new_path, binary_segment)
+    cv2.imwrite(new_path, green_mask)
 
 
 class BinarySegment:

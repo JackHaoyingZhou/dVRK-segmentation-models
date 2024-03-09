@@ -1,11 +1,11 @@
 # global workspace
 workspace: "/home/jackzhy/IROS_2024/dVRK-segmentation-models"
-data_dir: "/home/jackzhy/IROS_2024/dVRK-segmentation-models/monai_data/AMBF_DATASETS/"
+data_dir: "/home/jackzhy/IROS_2024/dVRK-segmentation-models/monai_data/AMBF_DATASETS_NEW/"
 # dataset paths
-train_data_path: "${.data_dir}/000001/"
-test_data_path: "${.data_dir}/000002/"
+train_data_path: "${.data_dir}/train/"
+test_data_path: "${.data_dir}/valid/"
 mapping_file_name: dataset_config.yaml
-mapping_file_path: "${.train_data_path}/${.mapping_file_name}"
+mapping_file_path: "${.data_dir}/${.mapping_file_name}"
 # training paths
 pretrained_weights_path: "${.workspace}/assets/weights/pretrained-weights"
 training_output_path: ${hydra:runtime.output_dir}/../../

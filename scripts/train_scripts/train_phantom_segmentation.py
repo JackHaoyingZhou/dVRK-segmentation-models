@@ -42,7 +42,7 @@ class BopImageDirParser(ImageDirParser):
 
     def parse_image_dir(self, root_dir: Path):
         self.images_list = natsorted(list(root_dir.glob("**/rgb/*.png")))
-        self.labels_list = natsorted(list(root_dir.glob("**/segmented/*.png")))
+        self.labels_list = natsorted(list(root_dir.glob("**/binary_segmented/*.png")))
 
 
 @dataclass
@@ -91,11 +91,11 @@ def create_dataset_and_dataloader(
             label_parser, data_reader, color_transforms=ImageTransforms.img_transforms
         )
 
-    print(data_dir)
-    print(natsorted(list(data_dir.glob("**/rgb/*.png"))))
-    print(len(natsorted(list(data_dir.glob("**/rgb/*.png")))))
-    print(data_reader.images_list)
-    print(data_reader.labels_list)
+    # print(data_dir)
+    # print(natsorted(list(data_dir.glob("**/rgb/*.png"))))
+    # print(len(natsorted(list(data_dir.glob("**/rgb/*.png")))))
+    # print(data_reader.images_list)
+    # print(data_reader.labels_list)
     # print(ds.images_list)
     dl = ThreadDataLoader(ds, batch_size=batch_size, num_workers=2, shuffle=True)
 
