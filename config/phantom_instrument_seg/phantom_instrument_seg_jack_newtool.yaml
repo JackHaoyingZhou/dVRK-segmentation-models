@@ -19,7 +19,7 @@ path_config:
 
 train_config:
   device: "${..global_device}"
-  epochs: 20
+  epochs: 50
   batch_size: 8
   num_workers: 4
   learning_rate: 1e-4

@@ -1,6 +1,6 @@
 # global workspace
 workspace: "/home/jackzhy/IROS_2024/dVRK-segmentation-models"
-data_dir: "/home/jackzhy/IROS_2024/dVRK-segmentation-models/monai_data/AMBF_DATASETS_NEW/"
+data_dir: "/home/jackzhy/IROS_2024/dVRK-segmentation-models/monai_data/AMBF_newtool/"
 # dataset paths
 train_data_path: "${.data_dir}/train/"
 test_data_path: "${.data_dir}/valid/"

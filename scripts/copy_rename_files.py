@@ -9,7 +9,7 @@ from typing import List, Union
 import shutil
 import argparse
 from sklearn.model_selection import train_test_split
-
+import json
 
 def sort_file_list(file_list: List[str]) -> List[str]:
     '''
@@ -33,7 +33,7 @@ def copy_and_rename(src_path: str, dest_folder: str, new_name: str) -> None:
 
 
 class FilesRearrange:
-    def __init__(self, src_folder: str, des_folder: str, split_flag: bool =True):
+    def __init__(self, src_folder: str, des_folder: str, split_flag: bool = True):
         '''
         :param src_folders: source folders path
         :param des_folder: destination folder path
@@ -44,11 +44,12 @@ class FilesRearrange:
         self.src_folders = sort_file_list(glob(os.path.join(self.src, '*')))
         self.des_folder = des_folder
         self.subfolder_list = ['rgb', 'segmented']
+        self.split_flag = split_flag
         if split_flag:
             self.outfolder_list = ['train', 'valid']
         else:
             self.outfolder_list = ['test']
-        self.split_flag = split_flag
+
 
         # Create folders if necessary
         if not os.path.exists(self.des_folder):
@@ -121,14 +122,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Copy and Rename to Rearrange files')
     parser.add_argument('-i', '--input_dir', required=False, default='../monai_data/AMBF_DATASETS',
                         help='The folder of your data')
-    parser.add_argument('-o', '--output_dir', required=False, default='../monai_data/AMBF_DATASETS_NEW',
+    parser.add_argument('-o', '--output_dir', required=False, default='../monai_data/AMBF_oldtool',
                         help='The output folder of your reorganized data')
-    parser.add_argument('-s', '--split_flag', required=False, default=True, help='The flag of whether split the dataset')
+    parser.add_argument('-s', '--split_flag', required=False, default="True", help='The flag of whether split the dataset')
 
     args = parser.parse_args()
     data_path = os.path.abspath(args.input_dir)
     out_folder = os.path.abspath(args.output_dir)
-    flag_split = args.split_flag
+    flag_split = json.loads(args.split_flag.lower())
 
     # data_path = os.path.join(dynamic_path, 'monai_data', 'AMBF_DATASETS')
     # out_folder = os.path.join(dynamic_path, 'monai_data', 'AMBF_DATASETS_New')

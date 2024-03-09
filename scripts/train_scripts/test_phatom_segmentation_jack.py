@@ -53,6 +53,9 @@ def save_test_predictions(
     # fig.subplots_adjust(hspace=0, wspace=0)
     # # for i, ax in enumerate(axes.flat):
 
+    count = 0
+    total_num = len(ds)
+
     for i in range(len(ds)):
         # pair = next(iter(dl))
         pair = ds.get_sample(i, transform=False)
@@ -73,6 +76,9 @@ def save_test_predictions(
         # blended = blend_images(im, lb, cmap="viridis", alpha=0.7)
         # blended = blended.numpy().transpose(1, 2, 0)
         # blended = (blended * 255).astype(np.uint8)
+        count += 1
+        sys.stdout.write(f"\r Run Progress: {count} / {total_num}")
+        sys.stdout.flush()
 
         # ax.imshow(blended)
         # ax.axis("off")

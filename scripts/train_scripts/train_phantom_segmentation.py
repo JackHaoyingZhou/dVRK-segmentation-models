@@ -294,8 +294,9 @@ cs.store(name="base_config", node=SegmentationConfig)
 @hydra.main(
     version_base=None,
     config_path="../../config/phantom_instrument_seg/",
-    config_name="phantom_instrument_seg_jack",
+    config_name="phantom_instrument_seg_jack_newtool",
 )
+# config_name="phantom_instrument_seg_jack_oldtool",
 def main(cfg: SegmentationConfig):
     print(OmegaConf.to_yaml(cfg))
 
