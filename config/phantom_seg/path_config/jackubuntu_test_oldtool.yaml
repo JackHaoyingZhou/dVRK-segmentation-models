@@ -11,5 +11,5 @@ pretrained_weights_path: "${.workspace}/assets/weights/pretrained-weights"
 training_output_path: ${hydra:runtime.output_dir}/../../
 trained_weights_file_name: myweights.pt
 trained_weights_file_path: "${.training_output_path}/weights/"
-trained_weights_path: "/home/jackzhy/IROS_2024/dVRK-segmentation-models/scripts/train_scripts/outputs/phantom_instrument_seg_jack/weights/myweights.pt"
+trained_weights_path: "/home/jackzhy/IROS_2024/dVRK-segmentation-models/scripts/train_scripts/outputs/phantom_instrument_seg_jack_oldtool/weights/myweights.pt"
 predictions_path: "${.training_output_path}/vis/"

@@ -132,8 +132,10 @@ def calculate_metrics_on_valid(
 def test_model(
     config: SegmentationConfig, dataset_container: DatasetContainer, model: FlexibleUNet
 ):
-    path2weights = Path(config.path_config.trained_weights_file_path)
-    path2weights /= config.path_config.trained_weights_file_name
+    # path2weights = Path(config.path_config.trained_weights_file_path)
+    # path2weights /= config.path_config.trained_weights_file_name
+
+    path2weights = Path(config.path_config.trained_weights_path)
 
     label_parser = dataset_container.label_parser
     ds = dataset_container.ds_test
@@ -151,7 +153,8 @@ def test_model(
         calculate_metrics_on_valid(config, dataset_container, model_pipe)
 
 
-@hydra.main(version_base=None, config_path="../../config/phantom_seg", config_name="phantom_seg_jack")
+@hydra.main(version_base=None, config_path="../../config/phantom_seg", config_name="phantom_seg_jack_newtool")
+# config_name="phantom_seg_jack_oldtool"
 def main(cfg: SegmentationConfig):
     print(OmegaConf.to_yaml(cfg))
 
