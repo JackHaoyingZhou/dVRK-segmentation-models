@@ -34,7 +34,9 @@ class SegmentationLabelParser:
         self.mask_num = len(self.__classes_info)
 
         if self.mask_num == 0:
-            raise RuntimeError("No classes found. Maybe label_info_reader.read() was not called?")
+            raise RuntimeError(
+                "No classes found. Maybe label_info_reader.read() was not called?"
+            )
 
     def get_classes_info(self) -> List[SegmentationLabelInfo]:
         return self.__classes_info
@@ -61,7 +63,9 @@ class SegmentationLabelParser:
             converted_img[indices[0], indices[1]] = new_color
 
         converted_img = (
-            np.expand_dims(converted_img, 0) if color_first else np.expand_dims(converted_img, -1)
+            np.expand_dims(converted_img, 0)
+            if color_first
+            else np.expand_dims(converted_img, -1)
         )
         return converted_img
 
@@ -177,7 +181,13 @@ class YamlSegMapReader(LabelInfoReader):
             mapper = yaml.load(f, Loader=yaml.FullLoader)
 
             for object_name in mapper["object_names"]:
+                if object_name not in mapper:
+                    raise RuntimeError(
+                        f"Object {object_name} defined in `objects_names` but not available afterwards. Check yaml label file."
+                    )
                 new_seg_info = SegmentationLabelInfo(
-                    mapper[object_name]["class_id"], object_name, mapper[object_name]["rgb"]
+                    mapper[object_name]["class_id"],
+                    object_name,
+                    mapper[object_name]["rgb"],
                 )
                 self.classes_info.append(new_seg_info)
