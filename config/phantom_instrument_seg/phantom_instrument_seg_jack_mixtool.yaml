@@ -1,5 +1,5 @@
 defaults:
-  - path_config: jackubuntu_newtool
+  - path_config: jackubuntu_mixtool
   - _self_
 
 hydra:

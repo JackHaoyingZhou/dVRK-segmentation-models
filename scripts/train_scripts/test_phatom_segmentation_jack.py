@@ -153,8 +153,9 @@ def test_model(
         calculate_metrics_on_valid(config, dataset_container, model_pipe)
 
 
-@hydra.main(version_base=None, config_path="../../config/phantom_seg", config_name="phantom_seg_jack_newtool")
+@hydra.main(version_base=None, config_path="../../config/phantom_seg", config_name="phantom_seg_jack_mixtool")
 # config_name="phantom_seg_jack_oldtool"
+# config_name="phantom_seg_jack_newtool"
 def main(cfg: SegmentationConfig):
     print(OmegaConf.to_yaml(cfg))
 

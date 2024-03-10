@@ -3,7 +3,7 @@ import os
 import sys
 from glob import glob
 dynamic_path = os.path.abspath(__file__+"/../../")
-# print(dynamic_path)
+print(dynamic_path)
 sys.path.append(dynamic_path)
 from typing import List, Union
 import shutil
@@ -120,7 +120,7 @@ class FilesRearrange:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Copy and Rename to Rearrange files')
-    parser.add_argument('-i', '--input_dir', required=False, default='../monai_data/AMBF_DATASETS',
+    parser.add_argument('-i', '--input_dir', required=False, default='../monai_data/02_AMBF_DATASETS',
                         help='The folder of your data')
     parser.add_argument('-o', '--output_dir', required=False, default='../monai_data/AMBF_oldtool',
                         help='The output folder of your reorganized data')
@@ -137,5 +137,14 @@ if __name__ == '__main__':
     file_reorganizer = FilesRearrange(data_path, out_folder, flag_split)
 
     file_reorganizer.main()
+
+    # Copy the yaml file
+    yaml_name = 'dataset_config.yaml'
+    src_yaml_file = os.path.join(dynamic_path, 'monai_data', yaml_name)
+
+    assert os.path.exists(src_yaml_file), f'you need to define the yaml file, the name should be {yaml_name}'
+
+    copy_and_rename(src_yaml_file, out_folder, yaml_name)
+
     print('All Done')
 
