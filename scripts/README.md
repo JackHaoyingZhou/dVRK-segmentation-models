@@ -74,6 +74,8 @@ This script will read all images in the `src_folder` then copy & rename them and
 python3 create_binary_segment.py -i <src_foler>
 ```
 
+This script converts the segmented images into binary segmented images. Then, it stores the binary segmentation at a subfolder named `binary_segmented` in the `src_folder`
+
 ## Train
 
 ```bash
@@ -81,8 +83,12 @@ cd train_scripts
 python3 train_phantom_segmentation.py
 ```
 
+Please check the xxx_jack.yaml for details
+
 ## Test
 
 ```bash
 test_phantom_segmentation_jack.py
 ```
+
+Please check the xxx_jack.yaml for details
