@@ -75,11 +75,15 @@ class BinarySegment:
         out_path = os.path.join(self.src_folder, self.outfolder_name)
         num_img = len(self.all_img_files)
 
+        count = 0
+        total_num = num_img
         for i_img in range(num_img):
             new_name = self.all_img_files[i_img].split('/')[-1]
             # print(new_name)
             color_to_binary(self.all_img_files[i_img], out_path, new_name)
-
+            count += 1
+            sys.stdout.write(f"\r Run Progress: {count} / {total_num}")
+            sys.stdout.flush()
         print('Binary Segment Convert Done')
 
 
