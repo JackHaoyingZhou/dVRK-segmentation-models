@@ -239,7 +239,7 @@ def main():
     # Config parameters
     config = ConfigParser()
     config.read_config("./training_configs/juanubuntu/dvrk_train_config.yaml")
-    config.read_config("/home/jackzhy/dVRK-segmentation-models/training_configs/jackubuntu/dvrk_train_config.yaml")
+    # config.read_config("/home/jackzhy/dVRK-segmentation-models/training_configs/jackubuntu/dvrk_train_config.yaml")
 
     # show_images(config, show_valid=True)
 
