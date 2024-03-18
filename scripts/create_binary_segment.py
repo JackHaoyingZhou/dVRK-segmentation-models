@@ -47,9 +47,9 @@ class BinarySegment:
         '''
         self.src_folder = src_folder
         self.subfolder_name = 'segmented'
-        self.outfolder_name= 'binary_segmented'
+        self.outfolder_name = 'binary_segmented'
 
-        assert os.path.exists(os.path.join(self.src_folder, self.subfolder_name)), 'Segmented Image folder does not exist!'
+        assert os.path.exists(os.path.join(self.src_folder, self.subfolder_name)), 'Segmented Image folder does not exist! Please check whether you input path include the split that you want to process? E.g. ./xxx/segmented'
 
         # Create folders if necessary
         out_path = os.path.join(self.src_folder, self.outfolder_name)

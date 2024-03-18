@@ -1,5 +1,5 @@
 # How to Run the Scripts for Training and Testing
-Contributor: Juan Antoni Barragan & Haoying(Jack) Zhou
+Contributor: Juan Antonio Barragan & Haoying(Jack) Zhou
 
 ## Run Data Parser
 
@@ -71,7 +71,7 @@ This script will read all images in the `src_folder` then copy & rename them and
 ## Create Binary Segment
 
 ```bash
-python3 create_binary_segment.py -i <src_foler>
+python3 create_binary_segment.py -i <src_folder>
 ```
 
 This script converts the segmented images into binary segmented images. Then, it stores the binary segmentation at a subfolder named `binary_segmented` in the `src_folder`
