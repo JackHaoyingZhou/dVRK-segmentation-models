@@ -89,7 +89,7 @@ def main(dataset_path: Path, output_path: Path, visualize: bool, seg_map_path) -
         blended = (blended * 255).astype(np.uint8)
         blended = cv2.cvtColor(blended, cv2.COLOR_RGB2BGR)
 
-        cv2.imwrite(str(output_path / f"{count:06d}.png"), blended)
+        cv2.imwrite(str(output_path / f"{count:06d}.jpg"), blended)
 
         if visualize:
             cv2.imshow("img", blended)
