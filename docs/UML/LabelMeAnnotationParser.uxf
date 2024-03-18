@@ -1,0 +1,12 @@
+<diagram program="umletino" version="15.1"><zoom_level>10</zoom_level><element><id>UMLClass</id><coordinates><x>200</x><y>280</y><w>250</w><h>90</h></coordinates><panel_attributes>/LabelMeImageSaver/
+--
+label_parser: SegmentationLabelParser
+root_path: Path
+--
+save_image_and_label(): Abstract
+</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>120</x><y>430</y><w>130</w><h>40</h></coordinates><panel_attributes>BOPFmtSaver</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>260</x><y>430</y><w>130</w><h>40</h></coordinates><panel_attributes>SingleDirSaver</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>410</x><y>430</y><w>120</w><h>40</h></coordinates><panel_attributes>MultiDirSaver</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>160</x><y>360</y><w>160</w><h>90</h></coordinates><panel_attributes>lt=&lt;&lt;.</panel_attributes><additional_attributes>140;10;10;70</additional_attributes></element><element><id>Relation</id><coordinates><x>310</x><y>360</y><w>30</w><h>90</h></coordinates><panel_attributes>lt=&lt;&lt;.</panel_attributes><additional_attributes>10;10;10;70</additional_attributes></element><element><id>Relation</id><coordinates><x>330</x><y>360</y><w>160</w><h>90</h></coordinates><panel_attributes>lt=&lt;&lt;.</panel_attributes><additional_attributes>10;10;140;70</additional_attributes></element><element><id>UMLClass</id><coordinates><x>190</x><y>70</y><w>260</w><h>90</h></coordinates><panel_attributes>LabelMeJsonParser
+--
+json_file: Path
+label_parser: SegmentationLabelParser
+data_saver: LabelMeImageSaver</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>310</x><y>150</y><w>90</w><h>150</h></coordinates><panel_attributes>lt=&lt;&lt;-
+requires a</panel_attributes><additional_attributes>10;130;10;10</additional_attributes></element></diagram>
