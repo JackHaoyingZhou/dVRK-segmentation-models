@@ -33,9 +33,9 @@ The overall structure of this repository should be as follows:
 python3 copy_rename_files.py -i <src_folder> -o <output_dir> -s <True or False>
 ```
 
-This script will read all images in the `src_folder` then copy & rename them and save in the `output_dir`. `-s` Represent a status whether to split the dataset
+This script will read all images in the `src_folder` then copy & rename them and save in the `output_dir`. The flag `-s` indicates if the dataset should be split into train and validation sets.
 
-** Important note, there is a configuration file called `dataset_config.yaml` included in the dataset root folder. If you don't have the file/ don't know how to create the file. Please feel free to submit an issue in the GitHub Repository.
+**Note: the label configuration file `dataset_config.yaml` should be included in the dataset root folder. This is a file that contains the colormap for the segmentation labels. If you don't have the file/ don't know how to create the file. Please feel free to submit an issue in the GitHub Repository.**
 
 | Command  | Meaning                 | Description                                                                                                           |
 |----------|-------------------------|-----------------------------------------------------------------------------------------------------------------------|
