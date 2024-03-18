@@ -135,7 +135,7 @@ def show_images(config: ConfigParser, show_valid: str = False):
         print("Showing training images")
         ds, dl = create_valid_dataset_and_dataloader(config, label_parser, batch_size=1)
 
-    fig, axes = plt.subplots(1, 2, figsize=(8, 8))
+    fig, axes = plt.subplots(3, 3, figsize=(8, 8))
     fig.set_tight_layout(True)
     fig.subplots_adjust(hspace=0, wspace=0)
     for i, ax in enumerate(axes.flat):
@@ -245,9 +245,9 @@ def main():
 
     train_with_image_dataset(config)
 
-    # show_inference_samples(config)
+    show_inference_samples(config)
 
-    # calculate_metrics_on_valid(config)
+    calculate_metrics_on_valid(config)
 
 
 if __name__ == "__main__":

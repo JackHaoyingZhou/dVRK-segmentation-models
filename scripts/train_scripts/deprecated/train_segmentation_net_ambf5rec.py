@@ -182,7 +182,8 @@ def train_with_video_dataset():
 def train_with_image_dataset():
     # Config parameters
     config = ConfigParser()
-    config.read_config("/home/jackzhy/IROS_2024/dVRK-segmentation-models/training_configs/jackubuntu/ambf_train_config.yaml")
+    config.read_config("./training_configs/thin7/ambf_train_config.yaml")
+    # config.read_config("/home/jackzhy/IROS_2024/dVRK-segmentation-models/training_configs/jackubuntu/ambf_train_config.yaml")
     train_config = config.get_parsed_content("ambf_train_config")
 
     train_dir_list = train_config["train_dir_list"]
