@@ -9,3 +9,6 @@ assets
 temp/
 wandb/
 outputs/
+.idea/
+.DS_Store
+monai_data/

@@ -41,8 +41,8 @@ class BopImageDirParser(ImageDirParser):
         self.parse_image_dir(root_dirs[0])
 
     def parse_image_dir(self, root_dir: Path):
-        self.images_list = natsorted(list(root_dir.glob("*/rgb/*.png")))
-        self.labels_list = natsorted(list(root_dir.glob("*/segmented/*.png")))
+        self.images_list = natsorted(list(root_dir.glob("**/rgb/*.png")))
+        self.labels_list = natsorted(list(root_dir.glob("**/binary_segmented/*.png")))
 
 
 @dataclass
@@ -90,6 +90,13 @@ def create_dataset_and_dataloader(
         ds = ImageSegmentationDataset(
             label_parser, data_reader, color_transforms=ImageTransforms.img_transforms
         )
+
+    # print(data_dir)
+    # print(natsorted(list(data_dir.glob("**/rgb/*.png"))))
+    # print(len(natsorted(list(data_dir.glob("**/rgb/*.png")))))
+    # print(data_reader.images_list)
+    # print(data_reader.labels_list)
+    # print(ds.images_list)
     dl = ThreadDataLoader(ds, batch_size=batch_size, num_workers=2, shuffle=True)
 
     return ds, dl
@@ -287,8 +294,10 @@ cs.store(name="base_config", node=SegmentationConfig)
 @hydra.main(
     version_base=None,
     config_path="../../config/phantom_instrument_seg/",
-    config_name="phantom_instrument_seg",
+    config_name="phantom_instrument_seg_jack_newtool",
 )
+# config_name="phantom_instrument_seg_jack_oldtool",
+# config_name="phantom_instrument_seg_jack_mixtool",
 def main(cfg: SegmentationConfig):
     print(OmegaConf.to_yaml(cfg))
 
