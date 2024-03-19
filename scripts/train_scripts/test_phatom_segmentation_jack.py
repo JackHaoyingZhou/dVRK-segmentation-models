@@ -164,7 +164,7 @@ def test_model(
 @hydra.main(
     version_base=None,
     config_path="../../config/test_segmentation_configs",
-    config_name="test_seg_juan_newtool",
+    config_name="test_seg_jack_newtool",
 )
 def main(cfg: SegmentationConfig):
     print(OmegaConf.to_yaml(cfg))

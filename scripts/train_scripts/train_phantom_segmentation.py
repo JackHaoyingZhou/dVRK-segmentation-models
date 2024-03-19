@@ -311,7 +311,7 @@ cs.store(name="base_config", node=SegmentationConfig)
 @hydra.main(
     version_base=None,
     config_path="../../config/train_segmentation_configs/",
-    config_name="train_seg_juan_newtool",
+    config_name="train_seg_jack_newtool",
 )
 # config_name="phantom_instrument_seg_jack_oldtool",
 # config_name="phantom_instrument_seg_jack_mixtool",
