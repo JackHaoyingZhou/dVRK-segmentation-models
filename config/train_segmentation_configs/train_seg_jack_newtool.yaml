@@ -1,0 +1,8 @@
+defaults:
+  - train_base_config
+  - path_config: jackubuntu_newtool
+  - _self_
+
+hydra:
+  run:
+    dir: ./outputs/${hydra.job.config_name}/logs/${now:%Y%m%d}_${now:%H%M%S}

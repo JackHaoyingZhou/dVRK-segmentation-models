@@ -3,8 +3,7 @@ workspace: "/home/jbarrag3/research_juan/dVRK-segmentation-models/"
 data_dir: "/home/jbarrag3/research_juan/data/RAL-2024/Processed"
 # dataset paths
 train_data_path: "${.data_dir}/train/"
-valid_data_path: "${.data_dir}/valid/"
-test_data_path: "${.data_dir}/test/"
+test_data_path: "${.data_dir}/valid/"
 mapping_file_name: binary_segmap.yaml
 mapping_file_path: "${.data_dir}/${.mapping_file_name}"
 # training paths

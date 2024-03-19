@@ -1,5 +1,6 @@
 defaults:
-  - path_config: jackubuntu_test_mixtool
+  - test_base_config
+  - path_config: jackubuntu_test_newtool
   - _self_
 
 hydra:

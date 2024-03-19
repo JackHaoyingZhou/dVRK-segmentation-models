@@ -39,6 +39,7 @@ print(sys.path)
 cs = ConfigStore.instance()
 cs.store(name="base_config", node=SegmentationConfig)
 
+
 def save_test_predictions(
     config: SegmentationConfig,
     dataset_container: DatasetContainer,
@@ -67,7 +68,9 @@ def save_test_predictions(
         inferred_single_ch = inferred_single_ch.detach().cpu()
         input_tensor = input_tensor.detach().cpu()[0]
 
-        blended = blend_images(input_tensor, inferred_single_ch, cmap="viridis", alpha=0.8).numpy()
+        blended = blend_images(
+            input_tensor, inferred_single_ch, cmap="viridis", alpha=0.8
+        ).numpy()
         blended = (np.transpose(blended, (1, 2, 0)) * 254).astype(np.uint8)
         Image.fromarray(blended).save(predictions_dir / pred_name)
 
@@ -108,7 +111,9 @@ def calculate_metrics_on_valid(
         img = img.detach().cpu()[0]
         # img = ImageTransforms.inv_transforms(img).type(torch.uint8)[0].numpy()
         single_ch_prediction = onehot_prediction[0].argmax(dim=0, keepdim=True)
-        blended = blend_images(img, single_ch_prediction, cmap="viridis", alpha=0.8).numpy()
+        blended = blend_images(
+            img, single_ch_prediction, cmap="viridis", alpha=0.8
+        ).numpy()
         blended = (np.transpose(blended, (1, 2, 0)) * 254).astype(np.uint8)
 
         ### show image
@@ -129,6 +134,7 @@ def calculate_metrics_on_valid(
     table.fill_table()
     table.print_table()
 
+
 def test_model(
     config: SegmentationConfig, dataset_container: DatasetContainer, model: FlexibleUNet
 ):
@@ -140,7 +146,10 @@ def test_model(
     label_parser = dataset_container.label_parser
 
     model_pipe = FlexibleUnet1InferencePipe(
-        path2weights, config.test_config.device, out_channels=label_parser.mask_num, model=model
+        path2weights,
+        config.test_config.device,
+        out_channels=label_parser.mask_num,
+        model=model,
     )
     model_pipe.model.eval()
     model_pipe.upload_weights()
@@ -152,9 +161,11 @@ def test_model(
         calculate_metrics_on_valid(config, dataset_container, model_pipe)
 
 
-@hydra.main(version_base=None, config_path="../../config/phantom_seg", config_name="phantom_seg")
-# config_name="phantom_seg_jack_oldtool"
-# config_name="phantom_seg_jack_mixtool"
+@hydra.main(
+    version_base=None,
+    config_path="../../config/test_segmentation_configs",
+    config_name="test_seg_juan_newtool",
+)
 def main(cfg: SegmentationConfig):
     print(OmegaConf.to_yaml(cfg))
 

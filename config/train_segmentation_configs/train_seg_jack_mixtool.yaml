@@ -1,0 +1,4 @@
+defaults:
+  - train_base_config
+  - path_config: jackubuntu_mixtool
+  - _self_

@@ -1,7 +1,3 @@
-defaults:
-  - path_config: juanthin7_newtool
-  - _self_
-
 hydra:
   run:
     dir: ./outputs/${hydra.job.config_name}/logs/${now:%Y%m%d}_${now:%H%M%S}
@@ -38,4 +34,4 @@ actions:
   train: true
   test: true
   save_test_predictions: true
-  calculate_metrics: false
+  calculate_metrics: true 
