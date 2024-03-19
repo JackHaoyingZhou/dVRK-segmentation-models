@@ -1,0 +1,15 @@
+defaults:
+  - train_base_config
+  - path_config: juanthin7_newtool
+  - _self_
+
+train_config:
+  epochs: 25 #Overwrite base train_config.epochs
+
+#Uncomment to calculate only metrics
+# actions:
+#   show_images: true 
+#   train: false
+#   test: true 
+#   save_test_predictions: false
+#   calculate_metrics: true 

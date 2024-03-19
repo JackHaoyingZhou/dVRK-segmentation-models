@@ -1,7 +1,3 @@
-defaults:
-  - path_config: juanubuntu
-  - _self_
-
 hydra:
   run:
     dir: ./outputs/${hydra.job.config_name}/logs/${now:%Y%m%d}_${now:%H%M%S}
@@ -19,10 +15,10 @@ path_config:
 
 train_config:
   device: "${..global_device}"
-  epochs: 2
-  batch_size: 4
+  epochs: 20
+  batch_size: 8
   num_workers: 4
-  learning_rate: 1e-3
+  learning_rate: 1e-4
   pretrained_weights_path: "${..path_config.pretrained_weights_path}"
   training_output_path: "${..path_config.training_output_path}"
 
@@ -34,8 +30,8 @@ test_config:
   predictions_dir: "${..path_config.predictions_path}"
 
 actions:
-  show_images: false
-  train: false
+  show_images: true
+  train: true
   test: true
-  save_test_predictions: false
-  calculate_metrics: true
+  save_test_predictions: true
+  calculate_metrics: true 

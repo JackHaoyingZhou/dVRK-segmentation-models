@@ -10,6 +10,7 @@ import shutil
 import argparse
 from sklearn.model_selection import train_test_split
 import json
+from pathlib import Path
 
 def sort_file_list(file_list: List[str]) -> List[str]:
     '''
@@ -127,24 +128,21 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--split_flag', required=False, default="True", help='The flag of whether split the dataset')
 
     args = parser.parse_args()
-    data_path = os.path.abspath(args.input_dir)
-    out_folder = os.path.abspath(args.output_dir)
+    data_path =  Path(args.input_dir)
+    out_folder = Path(args.output_dir)
     flag_split = json.loads(args.split_flag.lower())
-
-    # data_path = os.path.join(dynamic_path, 'monai_data', 'AMBF_DATASETS')
-    # out_folder = os.path.join(dynamic_path, 'monai_data', 'AMBF_DATASETS_New')
 
     file_reorganizer = FilesRearrange(data_path, out_folder, flag_split)
 
     file_reorganizer.main()
 
     # Copy the yaml file
-    yaml_name = 'dataset_config.yaml'
-    src_yaml_file = os.path.join(dynamic_path, 'monai_data', yaml_name)
+    yaml_name = 'binary_segmap.yaml'
+    label_map_path = data_path / yaml_name 
 
-    assert os.path.exists(src_yaml_file), f'you need to define the yaml file, the name should be {yaml_name}'
+    assert os.path.exists(label_map_path), f'No label config file at {label_map_path}'
 
-    copy_and_rename(src_yaml_file, out_folder, yaml_name)
+    copy_and_rename(label_map_path, out_folder, yaml_name)
 
     print('All Done')
 

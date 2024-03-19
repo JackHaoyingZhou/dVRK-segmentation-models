@@ -23,6 +23,9 @@ class PathConfig:
     mapping_file_path: Path
     weights_file: Path
     predictions_path: Path
+    train_data_path: Path
+    valid_data_path: Path
+    test_data_path: Path
 
 
 @dataclass

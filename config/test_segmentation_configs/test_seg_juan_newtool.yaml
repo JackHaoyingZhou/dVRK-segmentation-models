@@ -1,0 +1,4 @@
+defaults:
+  - test_base_config
+  - path_config: juanthin7_newtool 
+  - _self_
