@@ -61,7 +61,7 @@ def save_test_predictions(
         pair = ds.get_sample(i, transform=False)
         im = pair["image"]
         im_path = Path(pair["path"])
-        pred_name = im_path.parent.parent.name + "_" + im_path.stem + "_pred.png"
+        pred_name = im_path.parent.parent.name + "_" + im_path.stem + "_pred.jpg"
 
         input_tensor, inferred_single_ch = model_pipe.infer(im)
         inferred_single_ch = inferred_single_ch.detach().cpu()
@@ -138,7 +138,6 @@ def test_model(
     path2weights = Path(config.path_config.trained_weights_path)
 
     label_parser = dataset_container.label_parser
-    ds = dataset_container.ds_test
 
     model_pipe = FlexibleUnet1InferencePipe(
         path2weights, config.test_config.device, out_channels=label_parser.mask_num, model=model
@@ -153,7 +152,7 @@ def test_model(
         calculate_metrics_on_valid(config, dataset_container, model_pipe)
 
 
-@hydra.main(version_base=None, config_path="../../config/phantom_seg", config_name="phantom_seg_jack_newtool")
+@hydra.main(version_base=None, config_path="../../config/phantom_seg", config_name="phantom_seg")
 # config_name="phantom_seg_jack_oldtool"
 # config_name="phantom_seg_jack_mixtool"
 def main(cfg: SegmentationConfig):

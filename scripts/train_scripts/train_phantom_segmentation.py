@@ -68,7 +68,7 @@ def create_label_parser(config: SegmentationConfig) -> SegmentationLabelParser:
 
 
 def create_dataset_and_dataloader(
-    config: ConfigParser, label_parser: SegmentationLabelParser, batch_size: int, split: str
+    config: SegmentationConfig, label_parser: SegmentationLabelParser, batch_size: int, split: str
 ) -> Tuple[ImageSegmentationDataset, ThreadDataLoader]:
     assert split in ["train", "test"], "Split must be either train or test"
 
@@ -172,7 +172,7 @@ def save_test_predictions(
         pair = ds.get_sample(i, transform=False)
         im = pair["image"]
         im_path = Path(pair["path"])
-        pred_name = im_path.parent.parent.name + "_" + im_path.stem + "_pred.png"
+        pred_name = im_path.parent.parent.name + "_" + im_path.stem + "_pred.jpg"
 
         input_tensor, inferred_single_ch = model_pipe.infer(im)
         inferred_single_ch = inferred_single_ch.detach().cpu()
@@ -294,7 +294,7 @@ cs.store(name="base_config", node=SegmentationConfig)
 @hydra.main(
     version_base=None,
     config_path="../../config/phantom_instrument_seg/",
-    config_name="phantom_instrument_seg_jack_newtool",
+    config_name="phantom_instrument_seg",
 )
 # config_name="phantom_instrument_seg_jack_oldtool",
 # config_name="phantom_instrument_seg_jack_mixtool",

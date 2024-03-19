@@ -1,0 +1,15 @@
+# global workspace
+workspace: "/home/jbarrag3/research_juan/dVRK-segmentation-models/"
+data_dir: "/home/jbarrag3/research_juan/data/RAL-2024/Processed"
+# dataset paths
+train_data_path: "${.data_dir}/train/"
+valid_data_path: "${.data_dir}/valid/"
+test_data_path: "${.data_dir}/test/"
+mapping_file_name: binary_segmap.yaml
+mapping_file_path: "${.data_dir}/${.mapping_file_name}"
+# training paths
+pretrained_weights_path: "${.workspace}/assets/weights/pretrained-weights"
+training_output_path: ${hydra:runtime.output_dir}/../../
+trained_weights_file_name: myweights.pt
+trained_weights_file_path: "${.training_output_path}/weights/"
+predictions_path: "${.training_output_path}/vis/"

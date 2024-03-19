@@ -1,5 +1,5 @@
 defaults:
-  - path_config: juanubuntu
+  - path_config: juanthin7_newtool 
   - _self_
 
 hydra:
@@ -37,5 +37,5 @@ actions:
   show_images: false
   train: false
   test: true
-  save_test_predictions: false
+  save_test_predictions: true 
   calculate_metrics: true
